@@ -73,12 +73,12 @@ export function StatCard({ title, value, icon, tone = "blue" }: { title: string;
         )}
       />
       <div className="p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-slate-500">{title}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-5 text-slate-500">{title}</p>
           <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{value}</p>
         </div>
-        <div className={clsx("rounded-lg p-3 transition group-hover:scale-105", tones[tone])}>{icon}</div>
+        <div className={clsx("shrink-0 rounded-lg p-3 transition group-hover:scale-105", tones[tone])}>{icon}</div>
       </div>
       </div>
     </div>
@@ -93,7 +93,7 @@ export function Panel({ title, action, children }: { title: string; action?: Rea
         <h2 className="text-base font-black tracking-tight text-slate-950">{title}</h2>
         {action}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   );
 }
@@ -123,7 +123,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
             <X size={18} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-4 sm:p-5">{children}</div>
       </div>
     </div>
   );

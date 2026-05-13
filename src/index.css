@@ -41,3 +41,73 @@ textarea {
   background: #b8e4ee;
   color: #123f55;
 }
+
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+main thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+main thead tr {
+  background: linear-gradient(180deg, #f8fcff 0%, #eef8fb 100%);
+}
+
+main th {
+  border-bottom: 1px solid #dbe7ee;
+  color: #475569;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+main tbody tr {
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+main tbody tr:nth-child(even) {
+  background-color: rgba(248, 252, 255, 0.72);
+}
+
+main tbody tr:hover {
+  background-color: #eef8fb;
+}
+
+main td,
+main th {
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  main table {
+    min-width: 720px;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  aside,
+  header,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  main,
+  section,
+  div {
+    box-shadow: none !important;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+}
