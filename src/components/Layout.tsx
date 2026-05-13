@@ -52,20 +52,20 @@ export function AppLayout() {
   return (
     <div className="min-h-screen">
       <Toast />
-      <aside className={clsx("fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl transition-transform lg:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
-        <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-5">
-          <div className="rounded-lg bg-clinic-700 p-2.5 text-white shadow-sm shadow-clinic-700/25"><Stethoscope size={23} /></div>
+      <aside className={clsx("fixed inset-y-0 left-0 z-40 w-72 border-r border-clinic-100 bg-gradient-to-b from-clinic-900 via-clinic-800 to-slate-950 text-white shadow-clinical transition-transform lg:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
+        <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
+          <div className="rounded-lg bg-white/15 p-2.5 text-white shadow-sm ring-1 ring-white/20"><Stethoscope size={23} /></div>
           <div>
-            <p className="text-lg font-black tracking-tight text-slate-950">Aarogya OPD</p>
-            <p className="text-xs font-semibold text-slate-500">Clinical workflow suite</p>
+            <p className="text-lg font-black tracking-tight text-white">Aarogya OPD</p>
+            <p className="text-xs font-semibold text-clinic-100">Clinical workflow suite</p>
           </div>
         </div>
-        <div className="mx-4 mt-4 rounded-lg border border-clinic-100 bg-clinic-25 p-3">
-          <div className="flex items-center gap-2 text-clinic-800">
+        <div className="mx-4 mt-4 rounded-lg border border-white/10 bg-white/10 p-3 backdrop-blur">
+          <div className="flex items-center gap-2 text-white">
             <ShieldCheck size={17} />
             <p className="text-sm font-black">Secure Demo</p>
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">Frontend-only local clinic data with role-based access.</p>
+          <p className="mt-1 text-xs leading-relaxed text-clinic-100">Frontend-only local clinic data with role-based access.</p>
         </div>
         <nav className="space-y-1 p-4">
           {items.map((item) => {
@@ -79,8 +79,8 @@ export function AppLayout() {
                   clsx(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition duration-200",
                     isActive
-                      ? "bg-clinic-50 text-clinic-800 shadow-sm ring-1 ring-clinic-100"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-clinic-800",
+                      ? "bg-white text-clinic-900 shadow-sm"
+                      : "text-clinic-50 hover:bg-white/10 hover:text-white",
                   )
                 }
               >

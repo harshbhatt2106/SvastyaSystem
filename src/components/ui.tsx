@@ -52,7 +52,27 @@ export function StatCard({ title, value, icon, tone = "blue" }: { title: string;
     slate: "bg-slate-100 text-slate-700",
   };
   return (
-    <div className="group rounded-lg border border-slate-200/80 bg-white/95 p-5 shadow-sm shadow-slate-200/60 transition duration-200 hover:-translate-y-0.5 hover:border-clinic-100 hover:shadow-clinical">
+    <div
+      className={clsx(
+        "group overflow-hidden rounded-lg border bg-white/95 shadow-sm shadow-slate-200/60 transition duration-200 hover:-translate-y-0.5 hover:shadow-clinical",
+        tone === "blue" && "border-clinic-100",
+        tone === "green" && "border-care-100",
+        tone === "amber" && "border-amber-100",
+        tone === "rose" && "border-rose-100",
+        tone === "slate" && "border-slate-200",
+      )}
+    >
+      <div
+        className={clsx(
+          "h-1.5",
+          tone === "blue" && "bg-clinic-600",
+          tone === "green" && "bg-care-600",
+          tone === "amber" && "bg-amber-500",
+          tone === "rose" && "bg-rose-500",
+          tone === "slate" && "bg-slate-400",
+        )}
+      />
+      <div className="p-5">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-500">{title}</p>
@@ -60,14 +80,16 @@ export function StatCard({ title, value, icon, tone = "blue" }: { title: string;
         </div>
         <div className={clsx("rounded-lg p-3 transition group-hover:scale-105", tones[tone])}>{icon}</div>
       </div>
+      </div>
     </div>
   );
 }
 
 export function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/60">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-clinic-25 px-5 py-4">
+    <section className="overflow-hidden rounded-lg border border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/60">
+      <div className="h-1 bg-gradient-to-r from-clinic-600 via-care-500 to-clinic-200" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-clinic-25 via-white to-care-50 px-5 py-4">
         <h2 className="text-base font-black tracking-tight text-slate-950">{title}</h2>
         {action}
       </div>
