@@ -5,9 +5,13 @@ import { AppLayout, RequireAuth } from "./components/Layout";
 import { Badge, Button, ConfirmDialog, EmptyState, Input, Label, Modal, Panel, Select, SkeletonRows, StatCard, Textarea, Toast } from "./components/ui";
 import { currency, fullName, todaysAppointments, useClinicStore } from "./store/clinicStore";
 import type { FormEvent } from "react";
-import type { Appointment, MedicineInventory, MedicineItem, Patient, Staff } from "./types";
+import type { Appointment, MedicineItem, Patient, Staff } from "./types";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const isDoctorUnavailable = (announcement: { isActive: boolean; startDate: string; endDate: string }) => {
+  const current = today();
+  return announcement.isActive && announcement.startDate <= current && announcement.endDate >= current;
+};
 
 function patientFor(patients: Patient[], patientId: string) {
   return patients.find((patient) => patient.id === patientId);
@@ -53,6 +57,9 @@ function Login() {
           </div>
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-slate-950">Clinic OPD workflow dashboard for reception, doctor, pharmacy, and display screen.</h1>
           <p className="mt-4 max-w-2xl text-lg text-slate-600">Frontend-only demo with localStorage persistence, realistic queues, prescriptions, billing, medicine inventory, announcements, and staff login integration.</p>
+          <div className="mt-6">
+            <Link to="/patient/login"><Button variant="secondary"><Search size={16} /> Patient Token Login</Button></Link>
+          </div>
           <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-3">
             {[
               ["Doctor", "doctor", "1234"],
@@ -74,6 +81,55 @@ function Login() {
             <div><Label>Username</Label><Input value={username} onChange={(event) => setUsername(event.target.value)} required /></div>
             <div><Label>Password</Label><Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></div>
             <Button className="w-full" type="submit">Login</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PatientLogin() {
+  const rows = useTodayRows();
+  const announcement = useClinicStore((state) => state.announcement);
+  const [mobile, setMobile] = useState("");
+  const [name, setName] = useState("");
+  const navigate = useNavigate();
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const cleanName = name.trim().toLowerCase();
+    const match = rows.find(({ patient }) => patient.mobile === mobile.trim() && fullName(patient).toLowerCase().includes(cleanName));
+    if (!match) {
+      useClinicStore.getState().pushToast("Patient token not found for today.", "error");
+      return;
+    }
+    navigate(`/patient/display/${match.appointment.id}`);
+  };
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Toast />
+      <div className="mx-auto grid min-h-screen max-w-5xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_420px]">
+        <section>
+          <div className="mb-6 inline-flex items-center gap-3 rounded-lg bg-blue-600 px-4 py-3 text-white shadow-soft">
+            <Activity /> <span className="text-lg font-bold">Aarogya OPD Queue</span>
+          </div>
+          <h1 className="max-w-2xl text-4xl font-bold leading-tight text-slate-950">Check your token number and nearby queue position.</h1>
+          <p className="mt-4 max-w-2xl text-lg text-slate-600">Patients can login with the same mobile number and name used during appointment registration.</p>
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="font-bold text-slate-950">Doctor availability</p>
+            <p className={isDoctorUnavailable(announcement) ? "mt-1 text-lg font-bold text-rose-600" : "mt-1 text-lg font-bold text-emerald-600"}>
+              {isDoctorUnavailable(announcement) ? "NOT AVAILABLE" : "AVAILABLE"}
+            </p>
+            {isDoctorUnavailable(announcement) && <p className="mt-2 text-sm text-slate-600">{announcement.message}</p>}
+          </div>
+        </section>
+        <form onSubmit={submit} className="rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
+          <h2 className="text-2xl font-bold text-slate-950">Patient Login</h2>
+          <p className="mt-1 text-sm text-slate-500">Enter appointment mobile number and patient name.</p>
+          <div className="mt-6 space-y-4">
+            <div><Label>Mobile Number</Label><Input value={mobile} onChange={(event) => setMobile(event.target.value)} placeholder="10 digit mobile" required /></div>
+            <div><Label>Patient Name</Label><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="First name or full name" required /></div>
+            <Button className="w-full" type="submit">View My Token</Button>
+            <Link className="block text-center text-sm font-semibold text-blue-700 hover:underline" to="/login">Staff login</Link>
           </div>
         </form>
       </div>
@@ -438,23 +494,6 @@ function MedicalDashboard() {
   return <div className="space-y-6"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><StatCard title="Pending Prescriptions" value={pending.length} icon={<ClipboardList />} tone="amber" /><StatCard title="Total Medicines In Stock" value={inventory.reduce((s, m) => s + m.stockQty, 0)} icon={<Pill />} /><StatCard title="Medicines Issued Today" value={issuedToday} icon={<PackagePlus />} tone="green" /><StatCard title="Today's Billing Total" value={currency(billing)} icon={<BadgeIndianRupee />} tone="slate" /></div><PrescriptionQueue /></div>;
 }
 
-function Inventory() {
-  const inventory = useClinicStore((state) => state.inventory);
-  const addInventory = useClinicStore((state) => state.addInventory);
-  const updateInventory = useClinicStore((state) => state.updateInventory);
-  const deleteInventory = useClinicStore((state) => state.deleteInventory);
-  const [editing, setEditing] = useState<MedicineInventory | null>(null);
-  const [form, setForm] = useState({ medicineName: "", stockQty: "", unitPrice: "" });
-  const save = (event: FormEvent) => {
-    event.preventDefault();
-    if (editing) updateInventory({ ...editing, medicineName: form.medicineName, stockQty: Number(form.stockQty), unitPrice: Number(form.unitPrice) });
-    else addInventory({ medicineName: form.medicineName, stockQty: Number(form.stockQty), unitPrice: Number(form.unitPrice) });
-    setEditing(null);
-    setForm({ medicineName: "", stockQty: "", unitPrice: "" });
-  };
-  return <div className="grid gap-6 xl:grid-cols-[420px_1fr]"><Panel title={editing ? "Edit Medicine" : "Add Medicine"}><form onSubmit={save} className="space-y-4"><div><Label>Medicine Name</Label><Input required value={form.medicineName} onChange={(e) => setForm({ ...form, medicineName: e.target.value })} /></div><div><Label>Stock Quantity</Label><Input required type="number" value={form.stockQty} onChange={(e) => setForm({ ...form, stockQty: e.target.value })} /></div><div><Label>Unit Price</Label><Input required type="number" value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} /></div><Button type="submit">{editing ? "Update" : "Add"} Medicine</Button></form></Panel><Panel title="Medicine Inventory"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Medicine</th><th>Stock</th><th>Unit Price</th><th>Actions</th></tr></thead><tbody>{inventory.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="py-3 font-semibold">{item.medicineName}</td><td>{item.stockQty}</td><td>{currency(item.unitPrice)}</td><td><div className="flex gap-2"><Button variant="ghost" onClick={() => { setEditing(item); setForm({ medicineName: item.medicineName, stockQty: String(item.stockQty), unitPrice: String(item.unitPrice) }); }}><Edit size={15} /></Button><Button variant="ghost" onClick={() => deleteInventory(item.id)}><Trash2 size={15} /></Button></div></td></tr>)}</tbody></table></Panel></div>;
-}
-
 function PrescriptionQueue() {
   const prescriptions = useClinicStore((state) => state.prescriptions);
   const appointments = useClinicStore((state) => state.appointments);
@@ -484,12 +523,19 @@ function InvoiceModal({
 }
 
 function PublicDisplay() {
+  const { appointmentId } = useParams();
   const rows = useTodayRows();
   const announcement = useClinicStore((state) => state.announcement);
+  const selectedIndex = rows.findIndex((row) => row.appointment.id === appointmentId);
+  const selected = selectedIndex >= 0 ? rows[selectedIndex] : undefined;
   const current = rows.find((row) => row.appointment.status === "IN_CONSULTATION") ?? rows.find((row) => row.appointment.status === "COMPLETED" || row.appointment.status === "SENT_TO_PHARMACY");
   const next = rows.filter((row) => row.appointment.status === "WAITING").slice(0, 3);
-  const available = !announcement.isActive;
-  return <div className="min-h-screen bg-slate-950 p-6 text-white"><div className="mx-auto max-w-6xl"><div className="mb-6 flex items-center justify-between"><div><p className="text-blue-300">Aarogya OPD Clinic</p><h1 className="text-3xl font-bold">Public Patient Display</h1></div><Badge status={available ? "AVAILABLE" : "NOT AVAILABLE"} /></div><div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]"><section className="rounded-lg bg-white p-10 text-center text-slate-950 shadow-soft"><p className="text-xl font-bold text-slate-500">NOW SERVING</p><p className="mt-6 text-8xl font-black text-blue-700">{current ? current.appointment.tokenNumber : "-"}</p><p className="mt-4 text-2xl font-bold">{current ? fullName(current.patient) : "Queue not started"}</p></section><section className="rounded-lg bg-slate-900 p-8"><p className="text-xl font-bold">Next Tokens</p><div className="mt-5 grid grid-cols-3 gap-3">{next.map((row) => <div key={row.appointment.id} className="rounded-lg bg-blue-600 p-6 text-center text-4xl font-black">{row.appointment.tokenNumber}</div>)}</div><div className="mt-8 grid gap-3"><div className="rounded-lg bg-slate-800 p-4"><p className="text-sm text-slate-300">Waiting patients count</p><p className="text-3xl font-bold">{rows.filter((row) => row.appointment.status === "WAITING").length}</p></div><div className="rounded-lg bg-slate-800 p-4"><p className="text-sm text-slate-300">Your position concept</p><p className="text-lg font-semibold">Check your token against the next token list.</p></div></div></section></div>{announcement.isActive && <div className="mt-6 rounded-lg bg-amber-100 p-5 text-amber-900"><b>Doctor leave notice:</b> {announcement.message}</div>}</div></div>;
+  const available = !isDoctorUnavailable(announcement);
+  const waitingRows = rows.filter((row) => row.appointment.status === "WAITING");
+  const patientPosition = selected?.appointment.status === "WAITING" ? waitingRows.findIndex((row) => row.appointment.id === selected.appointment.id) + 1 : 0;
+  const nearbyRows = selectedIndex >= 0 ? rows.slice(Math.max(0, selectedIndex - 5), selectedIndex + 6) : [];
+  if (!selected) return <Navigate to="/patient/login" replace />;
+  return <div className="min-h-screen bg-slate-950 p-6 text-white"><div className="mx-auto max-w-6xl"><div className="mb-6 flex items-center justify-between gap-4"><div><p className="text-blue-300">Aarogya OPD Clinic</p><h1 className="text-3xl font-bold">This is your token number: #{selected.appointment.tokenNumber}</h1><p className="mt-1 text-slate-300">{fullName(selected.patient)} • {selected.patient.mobile}</p></div><div className="flex items-center gap-3"><Badge status={available ? "AVAILABLE" : "NOT AVAILABLE"} /><Link className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-900" to="/patient/login">Logout</Link></div></div><div className="grid gap-6 lg:grid-cols-[1.35fr_0.85fr]"><section className="rounded-lg bg-white p-10 text-center text-slate-950 shadow-soft"><p className="text-xl font-bold text-slate-500">NOW SERVING</p><p className="mt-6 text-8xl font-black text-blue-700">{current ? current.appointment.tokenNumber : "-"}</p><p className="mt-4 text-2xl font-bold">{current ? fullName(current.patient) : "Queue not started"}</p><div className="mt-8 rounded-lg bg-blue-50 p-5"><p className="text-sm font-bold uppercase text-blue-700">Your Token</p><p className="text-6xl font-black text-blue-700">#{selected.appointment.tokenNumber}</p><p className="mt-2 text-lg font-bold text-slate-800">{patientPosition === 0 ? "Your consultation is active/completed" : `${patientPosition} turn pending`}</p></div></section><section className="rounded-lg bg-slate-900 p-8"><p className="text-xl font-bold">Next Tokens</p><div className="mt-5 grid grid-cols-3 gap-3">{next.map((row) => <div key={row.appointment.id} className="rounded-lg bg-blue-600 p-6 text-center text-4xl font-black">{row.appointment.tokenNumber}</div>)}</div><div className="mt-8 grid gap-3"><div className="rounded-lg bg-slate-800 p-4"><p className="text-sm text-slate-300">Waiting patients count</p><p className="text-3xl font-bold">{waitingRows.length}</p></div><div className="rounded-lg bg-slate-800 p-4"><p className="text-sm text-slate-300">Doctor availability</p><p className={available ? "text-2xl font-bold text-emerald-300" : "text-2xl font-bold text-rose-300"}>{available ? "AVAILABLE" : "NOT AVAILABLE"}</p></div></div></section></div><section className="mt-6 rounded-lg bg-white p-5 text-slate-950 shadow-soft"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-lg font-bold">Nearby Queue List</p><p className="text-sm text-slate-500">Showing patients around your token so you can estimate your turn.</p></div><span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-700">Around 10 patients</span></div><div className="mt-4 overflow-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Status</th><th>Position</th></tr></thead><tbody>{nearbyRows.map((row) => <tr key={row.appointment.id} className={row.appointment.id === selected.appointment.id ? "border-b bg-blue-50 font-bold text-blue-900" : "border-b border-slate-100"}><td className="py-3">#{row.appointment.tokenNumber}</td><td>{fullName(row.patient)}</td><td>{row.appointment.status.replaceAll("_", " ")}</td><td>{row.appointment.id === selected.appointment.id ? "Your token" : row.appointment.tokenNumber < selected.appointment.tokenNumber ? "Before you" : "After you"}</td></tr>)}</tbody></table></div></section>{isDoctorUnavailable(announcement) && <div className="mt-6 rounded-lg bg-amber-100 p-5 text-amber-900"><b>Doctor leave notice:</b> {announcement.message}</div>}</div></div>;
 }
 
 function App() {
@@ -497,12 +543,14 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/display" element={<PublicDisplay />} />
+        <Route path="/display" element={<Navigate to="/patient/login" replace />} />
+        <Route path="/patient/login" element={<PatientLogin />} />
+        <Route path="/patient/display/:appointmentId" element={<PublicDisplay />} />
         <Route element={<RequireAuth />}><Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route element={<RequireAuth role="Nurse" />}><Route path="/nurse/dashboard" element={<NurseDashboard />} /><Route path="/nurse/appointments" element={<NurseAppointments />} /><Route path="/nurse/history" element={<PatientHistory />} /></Route>
           <Route element={<RequireAuth role="Doctor" />}><Route path="/doctor/dashboard" element={<DoctorDashboard />} /><Route path="/doctor/patient/:id" element={<PatientDetail />} /><Route path="/doctor/announcement" element={<Announcement />} /><Route path="/doctor/staff" element={<StaffList />} /><Route path="/doctor/staff/add" element={<StaffForm />} /><Route path="/doctor/staff/edit/:id" element={<StaffForm />} /></Route>
-          <Route element={<RequireAuth role="Medical Department" />}><Route path="/medical/dashboard" element={<MedicalDashboard />} /><Route path="/medical/inventory" element={<Inventory />} /><Route path="/medical/prescriptions" element={<PrescriptionQueue />} /><Route path="/medical/billing" element={<PrescriptionQueue />} /></Route>
+          <Route element={<RequireAuth role="Medical Department" />}><Route path="/medical/dashboard" element={<MedicalDashboard />} /><Route path="/medical/prescriptions" element={<PrescriptionQueue />} /><Route path="/medical/billing" element={<PrescriptionQueue />} /></Route>
         </Route></Route>
       </Routes>
     </BrowserRouter>

@@ -1,10 +1,14 @@
-import { Activity, Boxes, CalendarPlus, ClipboardList, History, Home, LogOut, Megaphone, Menu, Pill, Search, Stethoscope, Users, Monitor } from "lucide-react";
+import { Activity, CalendarPlus, ClipboardList, History, Home, LogOut, Megaphone, Menu, Pill, Search, Stethoscope, Users } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useClinicStore } from "../store/clinicStore";
 import type { Role } from "../types";
 import { Toast } from "./ui";
+
+const today = () => new Date().toISOString().slice(0, 10);
+const isAnnouncementLive = (announcement: { isActive: boolean; startDate: string; endDate: string }) =>
+  announcement.isActive && announcement.startDate <= today() && announcement.endDate >= today();
 
 const roleHome: Record<Role, string> = {
   Doctor: "/doctor/dashboard",
@@ -17,20 +21,16 @@ const navItems: Record<Role, { to: string; label: string; icon: React.ElementTyp
     { to: "/nurse/dashboard", label: "Dashboard", icon: Home },
     { to: "/nurse/appointments", label: "Appointments", icon: CalendarPlus },
     { to: "/nurse/history", label: "Patient History", icon: History },
-    { to: "/display", label: "Public Display", icon: Monitor },
   ],
   Doctor: [
     { to: "/doctor/dashboard", label: "Dashboard", icon: Home },
     { to: "/doctor/announcement", label: "Announcement", icon: Megaphone },
     { to: "/doctor/staff", label: "Staff Management", icon: Users },
-    { to: "/display", label: "Public Display", icon: Monitor },
   ],
   "Medical Department": [
     { to: "/medical/dashboard", label: "Dashboard", icon: Home },
-    { to: "/medical/inventory", label: "Inventory", icon: Boxes },
     { to: "/medical/prescriptions", label: "Prescriptions", icon: ClipboardList },
     { to: "/medical/billing", label: "Billing", icon: Pill },
-    { to: "/display", label: "Public Display", icon: Monitor },
   ],
 };
 
@@ -104,7 +104,7 @@ export function AppLayout() {
               </button>
             </div>
           </div>
-          {announcement.isActive && (
+          {isAnnouncementLive(announcement) && (
             <div className="border-t border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 sm:px-6">
               <span className="inline-flex items-center gap-2"><Activity size={15} /> {announcement.message}</span>
             </div>
