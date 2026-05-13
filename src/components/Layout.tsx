@@ -1,4 +1,4 @@
-import { Activity, CalendarPlus, ClipboardList, History, Home, LogOut, Megaphone, Menu, Pill, Search, Stethoscope, Users } from "lucide-react";
+import { Activity, Bell, CalendarPlus, ClipboardList, History, Home, LogOut, Megaphone, Menu, Pill, Search, ShieldCheck, Stethoscope, Users } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import clsx from "clsx";
@@ -50,15 +50,22 @@ export function AppLayout() {
   if (!user) return <Navigate to="/login" replace />;
   const items = navItems[user.role];
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <Toast />
-      <aside className={clsx("fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-200 bg-white transition-transform lg:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
-        <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-5">
-          <div className="rounded-lg bg-blue-600 p-2 text-white"><Stethoscope size={22} /></div>
+      <aside className={clsx("fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl transition-transform lg:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
+        <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-5">
+          <div className="rounded-lg bg-clinic-700 p-2.5 text-white shadow-sm shadow-clinic-700/25"><Stethoscope size={23} /></div>
           <div>
-            <p className="font-bold text-slate-950">Aarogya OPD</p>
-            <p className="text-xs text-slate-500">Clinic Management Demo</p>
+            <p className="text-lg font-black tracking-tight text-slate-950">Aarogya OPD</p>
+            <p className="text-xs font-semibold text-slate-500">Clinical workflow suite</p>
           </div>
+        </div>
+        <div className="mx-4 mt-4 rounded-lg border border-clinic-100 bg-clinic-25 p-3">
+          <div className="flex items-center gap-2 text-clinic-800">
+            <ShieldCheck size={17} />
+            <p className="text-sm font-black">Secure Demo</p>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">Frontend-only local clinic data with role-based access.</p>
         </div>
         <nav className="space-y-1 p-4">
           {items.map((item) => {
@@ -69,7 +76,12 @@ export function AppLayout() {
                 to={item.to}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  clsx("flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition", isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100")
+                  clsx(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition duration-200",
+                    isActive
+                      ? "bg-clinic-50 text-clinic-800 shadow-sm ring-1 ring-clinic-100"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-clinic-800",
+                  )
                 }
               >
                 <Icon size={18} /> {item.label}
@@ -80,21 +92,24 @@ export function AppLayout() {
       </aside>
       {open && <button className="fixed inset-0 z-30 bg-slate-950/20 lg:hidden" onClick={() => setOpen(false)} aria-label="Close menu" />}
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-          <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/88 shadow-sm shadow-slate-200/40 backdrop-blur-xl">
+          <div className="flex min-h-20 items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-3">
-              <button className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
+              <button className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
               <div>
-                <p className="text-sm font-semibold text-slate-500">{user.role}</p>
-                <h1 className="text-xl font-bold text-slate-950">Welcome, {user.name}</h1>
+                <p className="text-xs font-black uppercase tracking-wide text-clinic-700">{user.role}</p>
+                <h1 className="text-xl font-black tracking-tight text-slate-950">Welcome, {user.name}</h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="hidden items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 md:flex">
-                <Search size={16} /> OPD demo
+              <button className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-500 shadow-sm md:flex">
+                <Search size={16} /> Search records
+              </button>
+              <button className="hidden rounded-lg border border-slate-200 bg-white p-2 text-slate-500 shadow-sm transition hover:bg-clinic-25 hover:text-clinic-700 sm:inline-flex" aria-label="Notifications">
+                <Bell size={18} />
               </button>
               <button
-                className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100"
                 onClick={() => {
                   logout();
                   navigate("/login");
@@ -105,12 +120,12 @@ export function AppLayout() {
             </div>
           </div>
           {isAnnouncementLive(announcement) && (
-            <div className="border-t border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 sm:px-6">
+            <div className="border-t border-clinic-100 bg-clinic-50 px-4 py-2 text-sm font-semibold text-clinic-800 sm:px-6">
               <span className="inline-flex items-center gap-2"><Activity size={15} /> {announcement.message}</span>
             </div>
           )}
         </header>
-        <main className="p-4 sm:p-6">
+        <main className="p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

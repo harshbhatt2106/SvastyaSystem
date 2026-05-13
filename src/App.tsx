@@ -52,7 +52,7 @@ function Login() {
       <Toast />
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_440px]">
         <section>
-          <div className="mb-6 inline-flex items-center gap-3 rounded-lg bg-blue-600 px-4 py-3 text-white shadow-soft">
+          <div className="mb-6 inline-flex items-center gap-3 rounded-lg bg-clinic-700 px-4 py-3 text-white shadow-clinical">
             <Activity /> <span className="text-lg font-bold">Aarogya OPD Clinic</span>
           </div>
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-slate-950">Clinic OPD workflow dashboard for reception, doctor, pharmacy, and display screen.</h1>
@@ -66,7 +66,7 @@ function Login() {
               ["Nurse", "nurse", "1234"],
               ["Medical", "medical", "1234"],
             ].map(([role, userName, pass]) => (
-              <button key={role} className="rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-soft" onClick={() => { setUsername(userName); setPassword(pass); }}>
+              <button key={role} className="rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-clinic-200 hover:shadow-clinical" onClick={() => { setUsername(userName); setPassword(pass); }}>
                 <p className="font-bold text-slate-950">{role}</p>
                 <p className="mt-2 text-sm text-slate-500">username: <b>{userName}</b></p>
                 <p className="text-sm text-slate-500">password: <b>{pass}</b></p>
@@ -109,7 +109,7 @@ function PatientLogin() {
       <Toast />
       <div className="mx-auto grid min-h-screen max-w-5xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_420px]">
         <section>
-          <div className="mb-6 inline-flex items-center gap-3 rounded-lg bg-blue-600 px-4 py-3 text-white shadow-soft">
+          <div className="mb-6 inline-flex items-center gap-3 rounded-lg bg-clinic-700 px-4 py-3 text-white shadow-clinical">
             <Activity /> <span className="text-lg font-bold">Aarogya OPD Queue</span>
           </div>
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-slate-950">Check your token number and nearby queue position.</h1>
@@ -129,7 +129,7 @@ function PatientLogin() {
             <div><Label>Mobile Number</Label><Input value={mobile} onChange={(event) => setMobile(event.target.value)} placeholder="10 digit mobile" required /></div>
             <div><Label>Patient Name</Label><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="First name or full name" required /></div>
             <Button className="w-full" type="submit">View My Token</Button>
-            <Link className="block text-center text-sm font-semibold text-blue-700 hover:underline" to="/login">Staff login</Link>
+            <Link className="block text-center text-sm font-semibold text-clinic-700 hover:underline" to="/login">Staff login</Link>
           </div>
         </form>
       </div>
@@ -180,7 +180,7 @@ function QueuePanel({ role }: { role: "nurse" | "doctor" }) {
                   {role === "nurse" ? (
                     <Button variant="secondary" disabled={appointment.status !== "WAITING"} onClick={() => updateAppointmentStatus(appointment.id, "IN_CONSULTATION")}><Send size={15} /> Send To Doctor</Button>
                   ) : (
-                    <Link className="font-semibold text-blue-700 hover:underline" to={`/doctor/patient/${appointment.id}`}>
+                    <Link className="font-semibold text-clinic-700 hover:underline" to={`/doctor/patient/${appointment.id}`}>
                       {appointment.status === "SENT_TO_PHARMACY" || appointment.status === "MEDICINE_ISSUED" ? "Edit Prescription" : "Open"}
                     </Link>
                   )}
@@ -219,19 +219,19 @@ function NurseAppointments() {
   };
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-lg border border-blue-100 bg-white shadow-sm">
-        <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-5">
+      <section className="overflow-hidden rounded-lg border border-clinic-100 bg-white shadow-clinical">
+        <div className="border-b border-clinic-100 bg-gradient-to-r from-clinic-50 to-care-50 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-600 p-3 text-white"><FilePlus2 size={24} /></div>
+              <div className="rounded-lg bg-clinic-700 p-3 text-white"><FilePlus2 size={24} /></div>
               <div>
                 <h2 className="text-xl font-bold text-slate-950">New OPD Appointment</h2>
                 <p className="text-sm text-slate-600">Verify existing patient first, then generate the next token.</p>
               </div>
             </div>
-            <div className="rounded-lg bg-white px-5 py-3 text-right shadow-sm ring-1 ring-blue-100">
+            <div className="rounded-lg bg-white px-5 py-3 text-right shadow-sm ring-1 ring-clinic-100">
               <p className="text-xs font-bold uppercase text-slate-500">Next Token</p>
-              <p className="text-3xl font-black text-blue-700">#{nextTokenNumber}</p>
+              <p className="text-3xl font-black text-clinic-700">#{nextTokenNumber}</p>
             </div>
           </div>
         </div>
@@ -240,7 +240,7 @@ function NurseAppointments() {
             <div className="mb-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">Today's Total</p><p className="text-2xl font-black text-slate-950">{todaysQueue.length}</p></div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">Waiting</p><p className="text-2xl font-black text-amber-600">{todaysQueue.filter((appointment) => appointment.status === "WAITING").length}</p></div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">In Consultation</p><p className="text-2xl font-black text-blue-700">{todaysQueue.filter((appointment) => appointment.status === "IN_CONSULTATION").length}</p></div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">In Consultation</p><p className="text-2xl font-black text-clinic-700">{todaysQueue.filter((appointment) => appointment.status === "IN_CONSULTATION").length}</p></div>
             </div>
             <Label>Search existing patient by mobile, name, or token</Label>
             <div className="relative">
@@ -249,7 +249,7 @@ function NurseAppointments() {
             </div>
             <div className="mt-4 grid gap-3">
               {query && matches.map((patient) => (
-                <button key={patient.id} className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50" onClick={() => setSelected(patient)}>
+                <button key={patient.id} className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:border-clinic-200 hover:bg-clinic-25" onClick={() => setSelected(patient)}>
                   <div>
                     <p className="font-bold text-slate-950">{fullName(patient)}</p>
                     <p className="text-sm text-slate-500">{patient.age} yrs • {patient.village} • {patient.mobile}</p>
@@ -263,14 +263,14 @@ function NurseAppointments() {
           <div className="rounded-lg bg-slate-50 p-4">
             <p className="font-bold text-slate-950">Reception Flow</p>
             <div className="mt-4 space-y-3 text-sm">
-              <div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">1</span><p className="text-slate-600">Search patient using mobile, name, or token.</p></div>
-              <div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">2</span><p className="text-slate-600">Continue existing patient or register new patient.</p></div>
-              <div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">3</span><p className="text-slate-600">System auto-generates today's token.</p></div>
+              <div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-clinic-700 font-bold text-white">1</span><p className="text-slate-600">Search patient using mobile, name, or token.</p></div>
+              <div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-clinic-700 font-bold text-white">2</span><p className="text-slate-600">Continue existing patient or register new patient.</p></div>
+              <div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-clinic-700 font-bold text-white">3</span><p className="text-slate-600">System auto-generates today's token.</p></div>
             </div>
           </div>
         </div>
       </section>
-      <Panel title="Register New Patient" action={<span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Token #{nextTokenNumber} will be assigned</span>}>
+      <Panel title="Register New Patient" action={<span className="rounded-full bg-clinic-50 px-3 py-1 text-xs font-bold text-clinic-700">Token #{nextTokenNumber} will be assigned</span>}>
         <form className="grid gap-4" onSubmit={submitNew}>
           <div className="grid gap-4 md:grid-cols-4">
             <div><Label>First Name</Label><Input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
@@ -334,16 +334,16 @@ function PatientHistory() {
                         <td>{visit.visitTime || "-"}</td>
                         <td>#{visit.tokenNumber}</td>
                         <td className="max-w-md text-slate-600">{visit.doctorNotes}</td>
-                        <td className="font-semibold text-blue-700">{visit.medicines.join(", ") || "-"}</td>
+                        <td className="font-semibold text-clinic-700">{visit.medicines.join(", ") || "-"}</td>
                       </tr>
                     ))}
                     {todayPrescriptions.map((rx) => (
-                      <tr key={rx.id} className="border-b border-blue-100 bg-blue-50">
+                      <tr key={rx.id} className="border-b border-clinic-100 bg-clinic-50">
                         <td className="p-3 font-semibold">{rx.createdAt.slice(0, 10)}</td>
                         <td>{new Date(rx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
                         <td>Today</td>
                         <td className="max-w-md text-slate-700">{rx.doctorNotes}</td>
-                        <td className="font-semibold text-blue-700">{rx.medicines.map((medicine) => medicine.medicineName).join(", ")}</td>
+                        <td className="font-semibold text-clinic-700">{rx.medicines.map((medicine) => medicine.medicineName).join(", ")}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -371,35 +371,35 @@ function DoctorDashboard() {
   });
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-lg border border-blue-100 bg-white shadow-soft">
-        <div className="grid gap-6 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 p-6 text-white lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="overflow-hidden rounded-lg border border-clinic-100 bg-white shadow-clinical">
+        <div className="grid gap-6 bg-gradient-to-r from-clinic-800 via-clinic-700 to-care-700 p-6 text-white lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-100">Doctor Console</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-clinic-100">Doctor Console</p>
             <h2 className="mt-2 text-3xl font-bold">Today's OPD Flow</h2>
-            <p className="mt-2 max-w-2xl text-blue-50">
+            <p className="mt-2 max-w-2xl text-clinic-50">
               Current consultation, next token, and remaining patients are grouped here for quick doctor-side decisions.
             </p>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-white/15 p-4 ring-1 ring-white/20">
-                <p className="text-sm text-blue-100">Now Consulting</p>
+              <div className="rounded-lg bg-white/15 p-4 ring-1 ring-white/20 backdrop-blur">
+                <p className="text-sm text-clinic-100">Now Consulting</p>
                 <p className="mt-2 text-4xl font-black">{current ? `#${current.appointment.tokenNumber}` : "-"}</p>
-                <p className="mt-1 text-sm text-blue-50">{current ? fullName(current.patient) : "No active patient"}</p>
+                <p className="mt-1 text-sm text-clinic-50">{current ? fullName(current.patient) : "No active patient"}</p>
               </div>
-              <div className="rounded-lg bg-white/15 p-4 ring-1 ring-white/20">
-                <p className="text-sm text-blue-100">Next Token</p>
+              <div className="rounded-lg bg-white/15 p-4 ring-1 ring-white/20 backdrop-blur">
+                <p className="text-sm text-clinic-100">Next Token</p>
                 <p className="mt-2 text-4xl font-black">{next ? `#${next.appointment.tokenNumber}` : "-"}</p>
-                <p className="mt-1 text-sm text-blue-50">{next ? fullName(next.patient) : "Queue clear"}</p>
+                <p className="mt-1 text-sm text-clinic-50">{next ? fullName(next.patient) : "Queue clear"}</p>
               </div>
-              <div className="rounded-lg bg-white/15 p-4 ring-1 ring-white/20">
-                <p className="text-sm text-blue-100">Still Remaining</p>
+              <div className="rounded-lg bg-white/15 p-4 ring-1 ring-white/20 backdrop-blur">
+                <p className="text-sm text-clinic-100">Still Remaining</p>
                 <p className="mt-2 text-4xl font-black">{remaining.length}</p>
-                <p className="mt-1 text-sm text-blue-50">Waiting and current patients</p>
+                <p className="mt-1 text-sm text-clinic-50">Waiting and current patients</p>
               </div>
             </div>
           </div>
           <div className="rounded-lg bg-white p-5 text-slate-950 shadow-soft">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-50 p-3 text-blue-700"><Search size={22} /></div>
+              <div className="rounded-lg bg-clinic-50 p-3 text-clinic-700"><Search size={22} /></div>
               <div>
                 <h3 className="font-bold">Patient Search</h3>
                 <p className="text-sm text-slate-500">Search by token, mobile, name, or village</p>
@@ -413,7 +413,7 @@ function DoctorDashboard() {
                 <Link
                   key={appointment.id}
                   to={`/doctor/patient/${appointment.id}`}
-                  className="flex items-center justify-between rounded-md border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50"
+                  className="flex items-center justify-between rounded-lg border border-slate-200 p-3 transition hover:border-clinic-200 hover:bg-clinic-25"
                 >
                   <div>
                     <p className="font-bold text-slate-950">#{appointment.tokenNumber} {fullName(patient)}</p>
@@ -479,7 +479,7 @@ function PatientDetail() {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-bold uppercase text-blue-700">Token #{appointment.tokenNumber}</p>
+            <p className="text-sm font-bold uppercase text-clinic-700">Token #{appointment.tokenNumber}</p>
             <h2 className="mt-1 text-2xl font-bold text-slate-950">{fullName(patient)}</h2>
             <p className="mt-1 text-sm text-slate-600">{patient.age} yrs • {patient.gender} • {patient.weight} kg • {patient.mobile} • {patient.village}</p>
           </div>
