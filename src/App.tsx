@@ -204,6 +204,8 @@ function NurseAppointments() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Patient | null>(null);
   const [form, setForm] = useState({ firstName: "", surname: "", age: "", gender: "Male", mobile: "", weight: "", village: "" });
+  const todaysQueue = todaysAppointments(appointments);
+  const nextTokenNumber = todaysQueue.length ? Math.max(...todaysQueue.map((appointment) => appointment.tokenNumber)) + 1 : 1;
   const matches = patients.filter((patient) => {
     const tokenMatch = appointments.find((appointment) => appointment.patientId === patient.id && String(appointment.tokenNumber) === query);
     return query && (`${fullName(patient)} ${patient.mobile}`.toLowerCase().includes(query.toLowerCase()) || tokenMatch);
@@ -217,15 +219,28 @@ function NurseAppointments() {
   };
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-blue-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-blue-100 bg-white shadow-sm">
+        <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-3 text-white"><FilePlus2 size={24} /></div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-950">New OPD Appointment</h2>
+                <p className="text-sm text-slate-600">Verify existing patient first, then generate the next token.</p>
+              </div>
+            </div>
+            <div className="rounded-lg bg-white px-5 py-3 text-right shadow-sm ring-1 ring-blue-100">
+              <p className="text-xs font-bold uppercase text-slate-500">Next Token</p>
+              <p className="text-3xl font-black text-blue-700">#{nextTokenNumber}</p>
+            </div>
+          </div>
+        </div>
         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
           <div>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-lg bg-blue-50 p-3 text-blue-700"><Search size={22} /></div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-950">Create OPD Appointment</h2>
-                <p className="text-sm text-slate-500">Search first to avoid duplicate patient records, then create today's token.</p>
-              </div>
+            <div className="mb-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">Today's Total</p><p className="text-2xl font-black text-slate-950">{todaysQueue.length}</p></div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">Waiting</p><p className="text-2xl font-black text-amber-600">{todaysQueue.filter((appointment) => appointment.status === "WAITING").length}</p></div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-bold uppercase text-slate-500">In Consultation</p><p className="text-2xl font-black text-blue-700">{todaysQueue.filter((appointment) => appointment.status === "IN_CONSULTATION").length}</p></div>
             </div>
             <Label>Search existing patient by mobile, name, or token</Label>
             <div className="relative">
@@ -255,7 +270,7 @@ function NurseAppointments() {
           </div>
         </div>
       </section>
-      <Panel title="Register New Patient">
+      <Panel title="Register New Patient" action={<span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Token #{nextTokenNumber} will be assigned</span>}>
         <form className="grid gap-4" onSubmit={submitNew}>
           <div className="grid gap-4 md:grid-cols-4">
             <div><Label>First Name</Label><Input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
@@ -299,7 +314,45 @@ function PatientHistory() {
     <Panel title="Patient History Search">
       <Label>Search by mobile, name, or token</Label><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient history" />
       <div className="mt-5 grid gap-4">
-        {results.map((patient) => <div key={patient.id} className="rounded-lg border border-slate-200 p-4"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-bold text-slate-950">{fullName(patient)}</h3><p className="text-sm text-slate-500">{patient.mobile} • {patient.village} • {patient.totalVisits} visits</p></div><Badge status="Active" /></div><div className="mt-4 grid gap-3">{patient.visitHistory.map((visit) => <div key={`${patient.id}-${visit.visitDate}`} className="rounded-md bg-slate-50 p-3"><p className="font-semibold">{visit.visitDate} • Token {visit.tokenNumber}</p><p className="text-sm text-slate-600">{visit.doctorNotes}</p><p className="text-xs font-semibold text-blue-700">{visit.medicines.join(", ")}</p></div>)}{prescriptions.filter((rx) => rx.patientId === patient.id).map((rx) => <div key={rx.id} className="rounded-md border border-blue-100 bg-blue-50 p-3"><p className="font-semibold">Today Prescription</p><p className="text-sm">{rx.doctorNotes}</p></div>)}</div></div>)}
+        {results.map((patient) => {
+          const todayPrescriptions = prescriptions.filter((rx) => rx.patientId === patient.id);
+          return (
+            <div key={patient.id} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex flex-wrap justify-between gap-3">
+                <div><h3 className="font-bold text-slate-950">{fullName(patient)}</h3><p className="text-sm text-slate-500">{patient.mobile} • {patient.village} • {patient.totalVisits} visits</p></div>
+                <Badge status="Active" />
+              </div>
+              <div className="mt-4 overflow-auto">
+                <table className="w-full min-w-[820px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                    <tr><th className="p-3">Visit Date</th><th>Visit Time</th><th>Token</th><th>Doctor Notes</th><th>Medicines</th></tr>
+                  </thead>
+                  <tbody>
+                    {patient.visitHistory.map((visit, index) => (
+                      <tr key={`${patient.id}-${visit.visitDate}-${index}`} className="border-b border-slate-100">
+                        <td className="p-3 font-semibold">{visit.visitDate}</td>
+                        <td>{visit.visitTime || "-"}</td>
+                        <td>#{visit.tokenNumber}</td>
+                        <td className="max-w-md text-slate-600">{visit.doctorNotes}</td>
+                        <td className="font-semibold text-blue-700">{visit.medicines.join(", ") || "-"}</td>
+                      </tr>
+                    ))}
+                    {todayPrescriptions.map((rx) => (
+                      <tr key={rx.id} className="border-b border-blue-100 bg-blue-50">
+                        <td className="p-3 font-semibold">{rx.createdAt.slice(0, 10)}</td>
+                        <td>{new Date(rx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                        <td>Today</td>
+                        <td className="max-w-md text-slate-700">{rx.doctorNotes}</td>
+                        <td className="font-semibold text-blue-700">{rx.medicines.map((medicine) => medicine.medicineName).join(", ")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!patient.visitHistory.length && !todayPrescriptions.length && <EmptyState title="No previous visits" body="Prescription history will appear after doctor consultation." />}
+            </div>
+          );
+        })}
         {query && !results.length && <EmptyState title="No history found" body="Try another mobile number, name, or token." />}
       </div>
     </Panel>
@@ -389,10 +442,8 @@ function PatientDetail() {
   const { id } = useParams();
   const appointments = useClinicStore((state) => state.appointments);
   const patients = useClinicStore((state) => state.patients);
-  const inventory = useClinicStore((state) => state.inventory);
   const prescriptions = useClinicStore((state) => state.prescriptions);
   const savePrescription = useClinicStore((state) => state.savePrescription);
-  const updateAppointmentStatus = useClinicStore((state) => state.updateAppointmentStatus);
   const navigate = useNavigate();
   const appointment = appointments.find((item) => item.id === id);
   const patient = appointment ? patientFor(patients, appointment.patientId) : undefined;
@@ -401,7 +452,7 @@ function PatientDetail() {
   const [meds, setMeds] = useState<MedicineItem[]>(
     existingPrescription?.medicines.length
       ? existingPrescription.medicines
-      : [{ medicineName: inventory[0]?.medicineName ?? "", morning: true, afternoon: false, night: true, days: 3, beforeFood: false, afterFood: true, quantity: 6, price: 0 }],
+      : [{ medicineName: "", morning: true, afternoon: false, night: true, days: 3, beforeFood: false, afterFood: true, quantity: 6, price: 0 }],
   );
   const [editedAfterSend, setEditedAfterSend] = useState(false);
   if (!appointment || !patient) return <EmptyState title="Patient not found" body="Return to the doctor dashboard and open a valid token." />;
@@ -416,6 +467,7 @@ function PatientDetail() {
   };
   const submit = (send: boolean) => {
     if (!notes.trim()) return useClinicStore.getState().pushToast("Doctor notes are required.", "error");
+    if (meds.some((medicine) => !medicine.medicineName.trim())) return useClinicStore.getState().pushToast("Medicine name is required.", "error");
     savePrescription(appointment.id, notes, meds, send);
     if (send) {
       setEditedAfterSend(false);
@@ -423,23 +475,36 @@ function PatientDetail() {
     }
   };
   return (
-    <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-      <Panel title="Patient Profile"><p className="text-2xl font-bold">{fullName(patient)}</p><p className="mt-2 text-sm text-slate-600">{patient.age} yrs • {patient.gender} • {patient.weight} kg</p><p className="text-sm text-slate-600">{patient.mobile} • {patient.village}</p><div className="mt-4"><Badge status={appointment.status} /></div><div className="mt-4 rounded-md bg-slate-50 p-3"><p className="font-semibold">Total visits: {patient.totalVisits}</p><p className="text-sm text-slate-500">Last visit: {patient.lastVisitDate || "First visit"}</p></div><div className="mt-4 space-y-2">{patient.visitHistory.slice(0, 4).map((visit) => <div key={visit.visitDate} className="rounded-md border border-slate-200 p-3"><p className="font-semibold">{visit.visitDate}</p><p className="text-sm text-slate-600">{visit.doctorNotes}</p></div>)}</div></Panel>
+    <div className="space-y-6">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold uppercase text-blue-700">Token #{appointment.tokenNumber}</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-950">{fullName(patient)}</h2>
+            <p className="mt-1 text-sm text-slate-600">{patient.age} yrs • {patient.gender} • {patient.weight} kg • {patient.mobile} • {patient.village}</p>
+          </div>
+          <Badge status={appointment.status} />
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-500">Total Visits</p><p className="mt-1 text-2xl font-black text-slate-950">{patient.totalVisits}</p></div>
+          <div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-500">Last Visit</p><p className="mt-1 text-lg font-bold text-slate-950">{patient.lastVisitDate || "First visit"}</p></div>
+          <div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-500">Previous Notes</p><p className="mt-1 text-sm text-slate-600">{patient.visitHistory[0]?.doctorNotes || "No previous notes"}</p></div>
+        </div>
+      </section>
       <Panel title="Create Prescription">
         <div><Label>Doctor Notes</Label><Textarea rows={4} value={notes} onChange={(e) => { markPrescriptionEdited(); setNotes(e.target.value); }} placeholder="Clinical notes, diagnosis, advice" /></div>
         <div className="mt-5 space-y-4">
           {meds.map((medicine, index) => (
             <div key={index} className="rounded-lg border border-slate-200 p-4">
-              <div className="grid gap-3 md:grid-cols-4"><div className="md:col-span-2"><Label>Medicine Name</Label><Select value={medicine.medicineName} onChange={(e) => updateMed(index, { medicineName: e.target.value, price: 0 })}>{inventory.map((item) => <option key={item.id}>{item.medicineName}</option>)}</Select></div><div><Label>Days</Label><Input type="number" value={medicine.days} onChange={(e) => updateMed(index, { days: Number(e.target.value) })} /></div><div><Label>Quantity</Label><Input type="number" value={medicine.quantity} onChange={(e) => updateMed(index, { quantity: Number(e.target.value) })} /></div></div>
+              <div className="grid gap-3 md:grid-cols-[1.5fr_0.6fr_0.6fr]"><div><Label>Medicine Name</Label><Input value={medicine.medicineName} onChange={(e) => updateMed(index, { medicineName: e.target.value, price: 0 })} placeholder="Type medicine name manually" /></div><div><Label>Days</Label><Input type="number" value={medicine.days} onChange={(e) => updateMed(index, { days: Number(e.target.value) })} /></div><div><Label>Quantity</Label><Input type="number" value={medicine.quantity} onChange={(e) => updateMed(index, { quantity: Number(e.target.value) })} /></div></div>
               <div className="mt-3 grid gap-3 sm:grid-cols-5">{(["morning", "afternoon", "night", "beforeFood", "afterFood"] as const).map((key) => <label key={key} className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm font-medium"><input type="checkbox" checked={Boolean(medicine[key])} onChange={(e) => updateMed(index, { [key]: e.target.checked })} /> {key.replace("Food", " food")}</label>)}</div>
             </div>
           ))}
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => { markPrescriptionEdited(); setMeds([...meds, { ...meds[0], medicineName: inventory[0]?.medicineName ?? meds[0].medicineName, quantity: 1, price: 0 }]); }}><Plus size={16} /> Add Medicine</Button>
+          <Button variant="secondary" onClick={() => { markPrescriptionEdited(); setMeds([...meds, { medicineName: "", morning: true, afternoon: false, night: true, days: 3, beforeFood: false, afterFood: true, quantity: 1, price: 0 }]); }}><Plus size={16} /> Add Medicine</Button>
           {canSendToPharmacy && <Button onClick={() => submit(true)}><Send size={16} /> Send To Pharmacy</Button>}
           {!canSendToPharmacy && <span className="inline-flex items-center rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">Already sent to pharmacy</span>}
-          <Button variant="secondary" onClick={() => updateAppointmentStatus(appointment.id, "COMPLETED")}>Mark Completed</Button>
         </div>
       </Panel>
     </div>
@@ -503,7 +568,12 @@ function PrescriptionQueue() {
   const [bill, setBill] = useState<string | null>(null);
   const rows = prescriptions.map((rx) => ({ rx, appointment: appointments.find((a) => a.id === rx.appointmentId), patient: patientFor(patients, rx.patientId) })).filter((row) => row.appointment && row.patient && ["SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(row.appointment.status));
   const active = rows.find((row) => row.rx.id === bill);
-  return <Panel title="Prescription Queue"><div className="overflow-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Medicine List</th><th>Total Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map(({ rx, appointment, patient }) => <tr key={rx.id} className="border-b border-slate-100"><td className="py-3 font-bold">#{appointment!.tokenNumber}</td><td>{fullName(patient!)}</td><td>{rx.medicines.map((m) => m.medicineName).join(", ")}</td><td>{currency(rx.medicines.reduce((s, m) => s + m.price * m.quantity, 0))}</td><td><Badge status={appointment!.status} /></td><td><div className="flex gap-2"><Button variant="secondary" onClick={() => setBill(rx.id)}>Enter Price / Bill</Button><Button disabled={appointment!.status === "MEDICINE_ISSUED"} onClick={() => issueMedicine(rx.id)}>Issue Medicine</Button></div></td></tr>)}</tbody></table></div>{!rows.length && <EmptyState title="No pharmacy prescriptions" body="Doctor prescriptions sent to pharmacy will appear here." />}{active && <InvoiceModal row={active as never} onClose={() => setBill(null)} onSavePrices={(prices) => updatePrescriptionPrices(active.rx.id, prices)} />}</Panel>;
+  const doseText = (medicine: MedicineItem) => [
+    medicine.morning ? "M" : "",
+    medicine.afternoon ? "A" : "",
+    medicine.night ? "N" : "",
+  ].filter(Boolean).join("-") || "-";
+  return <Panel title="Prescription Queue"><div className="overflow-auto"><table className="w-full min-w-[950px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Doctor Prescription</th><th>Total Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map(({ rx, appointment, patient }) => <tr key={rx.id} className="border-b border-slate-100 align-top"><td className="py-3 font-bold">#{appointment!.tokenNumber}</td><td className="py-3">{fullName(patient!)}</td><td className="py-3"><div className="space-y-2">{rx.medicines.map((m) => <div key={m.medicineName} className="rounded-md bg-slate-50 p-2"><p className="font-bold text-slate-900">{m.medicineName}</p><p className="text-xs text-slate-600">Dose: {doseText(m)} • {m.days} days • Qty {m.quantity} • {m.beforeFood ? "Before food" : ""} {m.afterFood ? "After food" : ""}</p></div>)}</div><p className="mt-2 text-xs text-slate-500">Notes: {rx.doctorNotes}</p></td><td className="py-3">{currency(rx.medicines.reduce((s, m) => s + m.price * m.quantity, 0))}</td><td className="py-3"><Badge status={appointment!.status} /></td><td className="py-3"><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => setBill(rx.id)}>Enter Price / Bill</Button><Button disabled={appointment!.status === "MEDICINE_ISSUED"} onClick={() => issueMedicine(rx.id)}>Issue Medicine</Button></div></td></tr>)}</tbody></table></div>{!rows.length && <EmptyState title="No pharmacy prescriptions" body="Doctor prescriptions sent to pharmacy will appear here." />}{active && <InvoiceModal row={active as never} onClose={() => setBill(null)} onSavePrices={(prices) => updatePrescriptionPrices(active.rx.id, prices)} />}</Panel>;
 }
 
 function InvoiceModal({
@@ -519,7 +589,7 @@ function InvoiceModal({
     Object.fromEntries(row.rx.medicines.map((medicine) => [medicine.medicineName, medicine.price])),
   );
   const total = row.rx.medicines.reduce((sum, medicine) => sum + medicine.quantity * (prices[medicine.medicineName] || 0), 0);
-  return <Modal title="Professional Invoice" onClose={onClose}><div className="rounded-lg border border-slate-200 p-5"><div className="flex justify-between"><div><p className="text-xl font-bold">Aarogya OPD Clinic</p><p className="text-sm text-slate-500">Medicine invoice</p></div><div className="text-right"><p className="font-bold">Token #{row.appointment.tokenNumber}</p><p className="text-sm text-slate-500">{today()}</p></div></div><p className="mt-5 font-semibold">Patient: {fullName(row.patient)}</p><table className="mt-4 w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-2">Medicine</th><th>Qty</th><th>Manual Unit Price</th><th>Subtotal</th></tr></thead><tbody>{row.rx.medicines.map((m) => <tr key={m.medicineName} className="border-b"><td className="p-2">{m.medicineName}</td><td>{m.quantity}</td><td className="py-2"><Input type="number" min="0" value={prices[m.medicineName] ?? 0} onChange={(event) => setPrices({ ...prices, [m.medicineName]: Number(event.target.value) })} /></td><td>{currency(m.quantity * (prices[m.medicineName] || 0))}</td></tr>)}</tbody></table><div className="mt-4 text-right text-xl font-bold">Grand Total: {currency(total)}</div><div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={onClose}>Close</Button><Button onClick={() => { onSavePrices(prices); onClose(); }}>Save Bill Price</Button></div></div></Modal>;
+  return <Modal title="Professional Invoice" onClose={onClose}><div className="rounded-lg border border-slate-200 p-5"><div className="flex justify-between"><div><p className="text-xl font-bold">Aarogya OPD Clinic</p><p className="text-sm text-slate-500">Medicine invoice</p></div><div className="text-right"><p className="font-bold">Token #{row.appointment.tokenNumber}</p><p className="text-sm text-slate-500">{today()}</p></div></div><p className="mt-5 font-semibold">Patient: {fullName(row.patient)}</p><p className="mt-2 text-sm text-slate-600">Doctor notes: {row.rx.doctorNotes}</p><table className="mt-4 w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-2">Medicine</th><th>Schedule</th><th>Days</th><th>Qty</th><th>Manual Unit Price</th><th>Subtotal</th></tr></thead><tbody>{row.rx.medicines.map((m) => <tr key={m.medicineName} className="border-b"><td className="p-2 font-semibold">{m.medicineName}</td><td>{[m.morning ? "M" : "", m.afternoon ? "A" : "", m.night ? "N" : ""].filter(Boolean).join("-") || "-"}</td><td>{m.days}</td><td>{m.quantity}</td><td className="py-2"><Input type="number" min="0" value={prices[m.medicineName] ?? 0} onChange={(event) => setPrices({ ...prices, [m.medicineName]: Number(event.target.value) })} /></td><td>{currency(m.quantity * (prices[m.medicineName] || 0))}</td></tr>)}</tbody></table><div className="mt-4 text-right text-xl font-bold">Grand Total: {currency(total)}</div><div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={onClose}>Close</Button><Button variant="secondary" onClick={() => window.print()}>Print</Button><Button onClick={() => { onSavePrices(prices); }}>Save Bill Price</Button></div></div></Modal>;
 }
 
 function PublicDisplay() {

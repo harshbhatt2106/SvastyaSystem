@@ -9,6 +9,7 @@ export type AppointmentStatus =
 
 export interface VisitHistoryItem {
   visitDate: string;
+  visitTime?: string;
   tokenNumber: number;
   doctorNotes: string;
   medicines: string[];

@@ -50,12 +50,22 @@ const updatePatientVisit = (patient: Patient, appointment: Appointment, notes: s
   visitHistory: [
     {
       visitDate: today(),
+      visitTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       tokenNumber: appointment.tokenNumber,
       doctorNotes: notes,
       medicines: medicines.map((medicine) => medicine.medicineName),
     },
     ...patient.visitHistory,
   ],
+});
+
+const replacePatientVisit = (patient: Patient, appointment: Appointment, notes: string, medicines: MedicineItem[]) => ({
+  ...patient,
+  visitHistory: patient.visitHistory.map((visit) =>
+    visit.tokenNumber === appointment.tokenNumber && visit.visitDate === appointment.appointmentDate
+      ? { ...visit, doctorNotes: notes, medicines: medicines.map((medicine) => medicine.medicineName) }
+      : visit,
+  ),
 });
 
 export const useClinicStore = create<ClinicState>()(
@@ -160,7 +170,11 @@ export const useClinicStore = create<ClinicState>()(
               : item,
           ),
           patients: state.patients.map((patient) =>
-            patient.id === appointment.patientId ? updatePatientVisit(patient, appointment, doctorNotes, medicines) : patient,
+            patient.id === appointment.patientId
+              ? existing
+                ? replacePatientVisit(patient, appointment, doctorNotes, medicines)
+                : updatePatientVisit(patient, appointment, doctorNotes, medicines)
+              : patient,
           ),
         }));
         get().pushToast(sendToPharmacy ? "Prescription sent to pharmacy." : "Prescription saved.");
