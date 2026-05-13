@@ -28,6 +28,7 @@ export interface ClinicState {
   addInventory: (medicine: Omit<MedicineInventory, "id">) => void;
   updateInventory: (medicine: MedicineInventory) => void;
   deleteInventory: (medicineId: string) => void;
+  updatePrescriptionPrices: (prescriptionId: string, prices: Record<string, number>) => void;
   issueMedicine: (prescriptionId: string) => void;
   addStaff: (staff: Omit<Staff, "id">) => void;
   updateStaff: (staff: Staff) => void;
@@ -180,9 +181,29 @@ export const useClinicStore = create<ClinicState>()(
         set((state) => ({ inventory: state.inventory.filter((item) => item.id !== medicineId) }));
         get().pushToast("Medicine deleted.", "info");
       },
+      updatePrescriptionPrices: (prescriptionId, prices) => {
+        set((state) => ({
+          prescriptions: state.prescriptions.map((prescription) =>
+            prescription.id === prescriptionId
+              ? {
+                  ...prescription,
+                  medicines: prescription.medicines.map((medicine) => ({
+                    ...medicine,
+                    price: prices[medicine.medicineName] ?? medicine.price,
+                  })),
+                }
+              : prescription,
+          ),
+        }));
+        get().pushToast("Medicine prices updated.");
+      },
       issueMedicine: (prescriptionId) => {
         const prescription = get().prescriptions.find((item) => item.id === prescriptionId);
         if (!prescription) return;
+        if (prescription.medicines.some((medicine) => medicine.price <= 0)) {
+          get().pushToast("Enter medicine prices before issuing.", "error");
+          return;
+        }
         set((state) => ({
           inventory: state.inventory.map((item) => {
             const used = prescription.medicines.find((medicine) => medicine.medicineName === item.medicineName);

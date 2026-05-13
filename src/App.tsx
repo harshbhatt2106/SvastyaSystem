@@ -124,7 +124,9 @@ function QueuePanel({ role }: { role: "nurse" | "doctor" }) {
                   {role === "nurse" ? (
                     <Button variant="secondary" disabled={appointment.status !== "WAITING"} onClick={() => updateAppointmentStatus(appointment.id, "IN_CONSULTATION")}><Send size={15} /> Send To Doctor</Button>
                   ) : (
-                    <Link className="font-semibold text-blue-700 hover:underline" to={`/doctor/patient/${appointment.id}`}>Open</Link>
+                    <Link className="font-semibold text-blue-700 hover:underline" to={`/doctor/patient/${appointment.id}`}>
+                      {appointment.status === "SENT_TO_PHARMACY" || appointment.status === "MEDICINE_ISSUED" ? "Edit Prescription" : "Open"}
+                    </Link>
                   )}
                 </td>
               </tr>
@@ -332,12 +334,19 @@ function PatientDetail() {
   const appointments = useClinicStore((state) => state.appointments);
   const patients = useClinicStore((state) => state.patients);
   const inventory = useClinicStore((state) => state.inventory);
+  const prescriptions = useClinicStore((state) => state.prescriptions);
   const savePrescription = useClinicStore((state) => state.savePrescription);
   const updateAppointmentStatus = useClinicStore((state) => state.updateAppointmentStatus);
+  const navigate = useNavigate();
   const appointment = appointments.find((item) => item.id === id);
   const patient = appointment ? patientFor(patients, appointment.patientId) : undefined;
-  const [notes, setNotes] = useState("");
-  const [meds, setMeds] = useState<MedicineItem[]>([{ medicineName: inventory[0]?.medicineName ?? "", morning: true, afternoon: false, night: true, days: 3, beforeFood: false, afterFood: true, quantity: 6, price: inventory[0]?.unitPrice ?? 0 }]);
+  const existingPrescription = prescriptions.find((item) => item.appointmentId === id);
+  const [notes, setNotes] = useState(existingPrescription?.doctorNotes ?? "");
+  const [meds, setMeds] = useState<MedicineItem[]>(
+    existingPrescription?.medicines.length
+      ? existingPrescription.medicines
+      : [{ medicineName: inventory[0]?.medicineName ?? "", morning: true, afternoon: false, night: true, days: 3, beforeFood: false, afterFood: true, quantity: 6, price: 0 }],
+  );
   const [editedAfterSend, setEditedAfterSend] = useState(false);
   if (!appointment || !patient) return <EmptyState title="Patient not found" body="Return to the doctor dashboard and open a valid token." />;
   const isSentToPharmacy = appointment.status === "SENT_TO_PHARMACY" || appointment.status === "MEDICINE_ISSUED";
@@ -352,7 +361,10 @@ function PatientDetail() {
   const submit = (send: boolean) => {
     if (!notes.trim()) return useClinicStore.getState().pushToast("Doctor notes are required.", "error");
     savePrescription(appointment.id, notes, meds, send);
-    if (send) setEditedAfterSend(false);
+    if (send) {
+      setEditedAfterSend(false);
+      navigate("/doctor/dashboard");
+    }
   };
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -362,15 +374,13 @@ function PatientDetail() {
         <div className="mt-5 space-y-4">
           {meds.map((medicine, index) => (
             <div key={index} className="rounded-lg border border-slate-200 p-4">
-              <div className="grid gap-3 md:grid-cols-4"><div className="md:col-span-2"><Label>Medicine Name</Label><Select value={medicine.medicineName} onChange={(e) => { const selected = inventory.find((item) => item.medicineName === e.target.value); updateMed(index, { medicineName: e.target.value, price: selected?.unitPrice ?? medicine.price }); }}>{inventory.map((item) => <option key={item.id}>{item.medicineName}</option>)}</Select></div><div><Label>Days</Label><Input type="number" value={medicine.days} onChange={(e) => updateMed(index, { days: Number(e.target.value) })} /></div><div><Label>Quantity</Label><Input type="number" value={medicine.quantity} onChange={(e) => updateMed(index, { quantity: Number(e.target.value) })} /></div></div>
+              <div className="grid gap-3 md:grid-cols-4"><div className="md:col-span-2"><Label>Medicine Name</Label><Select value={medicine.medicineName} onChange={(e) => updateMed(index, { medicineName: e.target.value, price: 0 })}>{inventory.map((item) => <option key={item.id}>{item.medicineName}</option>)}</Select></div><div><Label>Days</Label><Input type="number" value={medicine.days} onChange={(e) => updateMed(index, { days: Number(e.target.value) })} /></div><div><Label>Quantity</Label><Input type="number" value={medicine.quantity} onChange={(e) => updateMed(index, { quantity: Number(e.target.value) })} /></div></div>
               <div className="mt-3 grid gap-3 sm:grid-cols-5">{(["morning", "afternoon", "night", "beforeFood", "afterFood"] as const).map((key) => <label key={key} className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm font-medium"><input type="checkbox" checked={Boolean(medicine[key])} onChange={(e) => updateMed(index, { [key]: e.target.checked })} /> {key.replace("Food", " food")}</label>)}</div>
-              <div className="mt-3"><Label>Price</Label><Input type="number" value={medicine.price} onChange={(e) => updateMed(index, { price: Number(e.target.value) })} /></div>
             </div>
           ))}
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => { markPrescriptionEdited(); setMeds([...meds, { ...meds[0], quantity: 1 }]); }}><Plus size={16} /> Add Medicine</Button>
-          <Button onClick={() => submit(false)}>Save Prescription</Button>
+          <Button variant="secondary" onClick={() => { markPrescriptionEdited(); setMeds([...meds, { ...meds[0], medicineName: inventory[0]?.medicineName ?? meds[0].medicineName, quantity: 1, price: 0 }]); }}><Plus size={16} /> Add Medicine</Button>
           {canSendToPharmacy && <Button onClick={() => submit(true)}><Send size={16} /> Send To Pharmacy</Button>}
           {!canSendToPharmacy && <span className="inline-flex items-center rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">Already sent to pharmacy</span>}
           <Button variant="secondary" onClick={() => updateAppointmentStatus(appointment.id, "COMPLETED")}>Mark Completed</Button>
@@ -450,15 +460,27 @@ function PrescriptionQueue() {
   const appointments = useClinicStore((state) => state.appointments);
   const patients = useClinicStore((state) => state.patients);
   const issueMedicine = useClinicStore((state) => state.issueMedicine);
+  const updatePrescriptionPrices = useClinicStore((state) => state.updatePrescriptionPrices);
   const [bill, setBill] = useState<string | null>(null);
   const rows = prescriptions.map((rx) => ({ rx, appointment: appointments.find((a) => a.id === rx.appointmentId), patient: patientFor(patients, rx.patientId) })).filter((row) => row.appointment && row.patient && ["SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(row.appointment.status));
   const active = rows.find((row) => row.rx.id === bill);
-  return <Panel title="Prescription Queue"><div className="overflow-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Medicine List</th><th>Total Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map(({ rx, appointment, patient }) => <tr key={rx.id} className="border-b border-slate-100"><td className="py-3 font-bold">#{appointment!.tokenNumber}</td><td>{fullName(patient!)}</td><td>{rx.medicines.map((m) => m.medicineName).join(", ")}</td><td>{currency(rx.medicines.reduce((s, m) => s + m.price * m.quantity, 0))}</td><td><Badge status={appointment!.status} /></td><td><div className="flex gap-2"><Button variant="secondary" onClick={() => setBill(rx.id)}>Generate Bill</Button><Button disabled={appointment!.status === "MEDICINE_ISSUED"} onClick={() => issueMedicine(rx.id)}>Issue Medicine</Button></div></td></tr>)}</tbody></table></div>{!rows.length && <EmptyState title="No pharmacy prescriptions" body="Doctor prescriptions sent to pharmacy will appear here." />}{active && <InvoiceModal row={active as never} onClose={() => setBill(null)} />}</Panel>;
+  return <Panel title="Prescription Queue"><div className="overflow-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Medicine List</th><th>Total Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map(({ rx, appointment, patient }) => <tr key={rx.id} className="border-b border-slate-100"><td className="py-3 font-bold">#{appointment!.tokenNumber}</td><td>{fullName(patient!)}</td><td>{rx.medicines.map((m) => m.medicineName).join(", ")}</td><td>{currency(rx.medicines.reduce((s, m) => s + m.price * m.quantity, 0))}</td><td><Badge status={appointment!.status} /></td><td><div className="flex gap-2"><Button variant="secondary" onClick={() => setBill(rx.id)}>Enter Price / Bill</Button><Button disabled={appointment!.status === "MEDICINE_ISSUED"} onClick={() => issueMedicine(rx.id)}>Issue Medicine</Button></div></td></tr>)}</tbody></table></div>{!rows.length && <EmptyState title="No pharmacy prescriptions" body="Doctor prescriptions sent to pharmacy will appear here." />}{active && <InvoiceModal row={active as never} onClose={() => setBill(null)} onSavePrices={(prices) => updatePrescriptionPrices(active.rx.id, prices)} />}</Panel>;
 }
 
-function InvoiceModal({ row, onClose }: { row: { rx: ReturnType<typeof useClinicStore.getState>["prescriptions"][number]; appointment: Appointment; patient: Patient }; onClose: () => void }) {
-  const total = row.rx.medicines.reduce((sum, medicine) => sum + medicine.quantity * medicine.price, 0);
-  return <Modal title="Professional Invoice" onClose={onClose}><div className="rounded-lg border border-slate-200 p-5"><div className="flex justify-between"><div><p className="text-xl font-bold">Aarogya OPD Clinic</p><p className="text-sm text-slate-500">Medicine invoice</p></div><div className="text-right"><p className="font-bold">Token #{row.appointment.tokenNumber}</p><p className="text-sm text-slate-500">{today()}</p></div></div><p className="mt-5 font-semibold">Patient: {fullName(row.patient)}</p><table className="mt-4 w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-2">Medicine</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th></tr></thead><tbody>{row.rx.medicines.map((m) => <tr key={m.medicineName} className="border-b"><td className="p-2">{m.medicineName}</td><td>{m.quantity}</td><td>{currency(m.price)}</td><td>{currency(m.quantity * m.price)}</td></tr>)}</tbody></table><div className="mt-4 text-right text-xl font-bold">Grand Total: {currency(total)}</div></div></Modal>;
+function InvoiceModal({
+  row,
+  onClose,
+  onSavePrices,
+}: {
+  row: { rx: ReturnType<typeof useClinicStore.getState>["prescriptions"][number]; appointment: Appointment; patient: Patient };
+  onClose: () => void;
+  onSavePrices: (prices: Record<string, number>) => void;
+}) {
+  const [prices, setPrices] = useState<Record<string, number>>(
+    Object.fromEntries(row.rx.medicines.map((medicine) => [medicine.medicineName, medicine.price])),
+  );
+  const total = row.rx.medicines.reduce((sum, medicine) => sum + medicine.quantity * (prices[medicine.medicineName] || 0), 0);
+  return <Modal title="Professional Invoice" onClose={onClose}><div className="rounded-lg border border-slate-200 p-5"><div className="flex justify-between"><div><p className="text-xl font-bold">Aarogya OPD Clinic</p><p className="text-sm text-slate-500">Medicine invoice</p></div><div className="text-right"><p className="font-bold">Token #{row.appointment.tokenNumber}</p><p className="text-sm text-slate-500">{today()}</p></div></div><p className="mt-5 font-semibold">Patient: {fullName(row.patient)}</p><table className="mt-4 w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-2">Medicine</th><th>Qty</th><th>Manual Unit Price</th><th>Subtotal</th></tr></thead><tbody>{row.rx.medicines.map((m) => <tr key={m.medicineName} className="border-b"><td className="p-2">{m.medicineName}</td><td>{m.quantity}</td><td className="py-2"><Input type="number" min="0" value={prices[m.medicineName] ?? 0} onChange={(event) => setPrices({ ...prices, [m.medicineName]: Number(event.target.value) })} /></td><td>{currency(m.quantity * (prices[m.medicineName] || 0))}</td></tr>)}</tbody></table><div className="mt-4 text-right text-xl font-bold">Grand Total: {currency(total)}</div><div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={onClose}>Close</Button><Button onClick={() => { onSavePrices(prices); onClose(); }}>Save Bill Price</Button></div></div></Modal>;
 }
 
 function PublicDisplay() {
