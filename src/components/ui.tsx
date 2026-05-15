@@ -8,10 +8,10 @@ type Tone = "blue" | "green" | "amber" | "rose" | "slate";
 
 const toneMap: Record<Tone, { border: string; icon: string; bar: string; text: string }> = {
   blue: {
-    border: "border-clinic-100",
-    icon: "bg-clinic-50 text-clinic-700 ring-clinic-100",
-    bar: "bg-clinic-700",
-    text: "text-clinic-700",
+    border: "border-blue-100",
+    icon: "bg-blue-50 text-blue-700 ring-blue-100",
+    bar: "bg-blue-700",
+    text: "text-blue-700",
   },
   green: {
     border: "border-care-100",
@@ -49,8 +49,8 @@ export function Button({
     <button
       className={clsx(
         "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold leading-none transition duration-200 focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-50",
-        variant === "primary" && "bg-[#124f68] text-white shadow-sm shadow-clinic-900/15 hover:-translate-y-0.5 hover:bg-[#123f55] hover:shadow-clinical focus:ring-clinic-100 [&_*]:text-white",
-        variant === "secondary" && "border border-slate-200 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-clinic-200 hover:bg-clinic-25 hover:text-clinic-800 hover:shadow-sm focus:ring-clinic-100",
+        variant === "primary" && "bg-blue-700 text-white shadow-sm shadow-blue-900/15 hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-clinical focus:ring-blue-100 [&_*]:text-white",
+        variant === "secondary" && "border border-blue-100 bg-white text-blue-800 shadow-sm hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-900 hover:shadow-sm focus:ring-blue-100",
         variant === "danger" && "bg-rose-600 text-white shadow-sm hover:bg-rose-700 focus:ring-rose-100",
         variant === "ghost" && "text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus:ring-slate-100",
         className,
@@ -67,7 +67,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={clsx(
-        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-clinic-500 focus:ring-4 focus:ring-clinic-100",
+        "w-full rounded-lg border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100",
         props.className,
       )}
     />
@@ -79,7 +79,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={clsx(
-        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition hover:border-slate-300 focus:border-clinic-500 focus:ring-4 focus:ring-clinic-100",
+        "w-full rounded-lg border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition hover:border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100",
         props.className,
       )}
     />
@@ -91,7 +91,7 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={clsx(
-        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-clinic-500 focus:ring-4 focus:ring-clinic-100",
+        "w-full rounded-lg border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100",
         props.className,
       )}
     />
@@ -117,7 +117,7 @@ export function StatCard({
 }) {
   const selected = toneMap[tone];
   return (
-    <div className={clsx("group overflow-hidden rounded-lg border bg-white/95 shadow-sm shadow-slate-200/70 ring-1 ring-white/70 transition duration-200 hover:-translate-y-0.5 hover:shadow-clinical", selected.border)}>
+    <div className={clsx("group overflow-hidden rounded-lg border bg-white/95 shadow-sm shadow-blue-100/70 ring-1 ring-white/70 transition duration-200 hover:-translate-y-0.5 hover:shadow-clinical", selected.border)}>
       <div className={clsx("h-1.5", selected.bar)} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
@@ -145,10 +145,10 @@ export function Panel({
   eyebrow?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/70 ring-1 ring-white/70">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50 px-5 py-4">
+    <section className="overflow-hidden rounded-lg border border-blue-100 bg-white/95 shadow-sm shadow-blue-100/70 ring-1 ring-white/70">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-white px-5 py-4">
         <div>
-          {eyebrow && <p className="text-xs font-bold uppercase text-clinic-700">{eyebrow}</p>}
+          {eyebrow && <p className="text-xs font-bold uppercase text-blue-700">{eyebrow}</p>}
           <h2 className="text-base font-black text-slate-950">{title}</h2>
         </div>
         {action}

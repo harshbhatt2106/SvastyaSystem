@@ -52,16 +52,14 @@ function ExecutiveOverview({ rows, title = "Hospital Command Overview" }: { rows
   const completed = rows.filter((row) => ["COMPLETED", "SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(row.appointment.status)).length;
   const waiting = rows.filter((row) => row.appointment.status === "WAITING").length;
   const revenue = rows.reduce((sum, row) => sum + (row.appointment.feeCollected ? appointmentFee(row.appointment, row.patient) : 0), 0);
-  const occupancy = rows.length ? Math.min(96, 62 + rows.length * 3) : 68;
   const kpis = [
     { title: "Patients", value: rows.length, icon: <Users />, helper: "Today's registered OPD flow", tone: "blue" as const },
     { title: "Appointments", value: rows.length + 8, icon: <CalendarDays />, helper: `${waiting} waiting for care`, tone: "amber" as const },
     { title: "Revenue", value: currency(revenue), icon: <CreditCard />, helper: "Collected consultation fees", tone: "green" as const },
-    { title: "Bed Occupancy", value: `${occupancy}%`, icon: <Bed />, helper: "IPD capacity snapshot", tone: "slate" as const },
   ];
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-clinical">
-      <div className="grid gap-6 border-b border-slate-100 bg-gradient-to-r from-white via-clinic-25 to-slate-50 p-5 sm:p-6 lg:grid-cols-[1.2fr_0.8fr]">
+    <section className="overflow-hidden rounded-lg border border-blue-100 bg-white shadow-clinical">
+      <div className="grid gap-6 border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-clinic-50 p-5 sm:p-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
           <div className="inline-flex items-center gap-2 rounded-md border border-clinic-100 bg-white px-3 py-1.5 text-xs font-black uppercase text-clinic-700 shadow-sm">
             <ShieldCheck size={15} /> Enterprise Healthcare Suite
@@ -84,7 +82,7 @@ function ExecutiveOverview({ rows, title = "Hospital Command Overview" }: { rows
           </div>
         </div>
       </div>
-      <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 bg-blue-50/30 p-5 sm:p-6 md:grid-cols-3">
         {kpis.map((kpi) => <StatCard key={kpi.title} {...kpi} />)}
       </div>
     </section>

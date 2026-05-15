@@ -8,15 +8,15 @@ export default {
       },
       colors: {
         clinic: {
-          25: "#f8fcff",
-          50: "#eef8fb",
-          100: "#d8f0f6",
-          200: "#b8e4ee",
-          500: "#1e8fb5",
-          600: "#14779c",
-          700: "#115f7e",
-          800: "#124f68",
-          900: "#123f55",
+          25: "#f7fbff",
+          50: "#eff7ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          500: "#3b82f6",
+          600: "#2563eb",
+          700: "#1d4ed8",
+          800: "#1e40af",
+          900: "#1e3a8a",
         },
         care: {
           50: "#ecfdf5",
@@ -28,7 +28,7 @@ export default {
       },
       boxShadow: {
         soft: "0 10px 30px rgba(15, 23, 42, 0.08)",
-        clinical: "0 18px 45px rgba(15, 79, 104, 0.10)",
+        clinical: "0 18px 45px rgba(30, 64, 175, 0.12)",
       },
     },
   },
