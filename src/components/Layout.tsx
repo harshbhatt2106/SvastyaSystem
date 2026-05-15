@@ -69,11 +69,11 @@ export function AppLayout() {
   const title = routeTitles[location.pathname] ?? "Clinical Workspace";
 
   return (
-    <div className="min-h-screen bg-[#edf6ff]">
+    <div className="min-h-screen bg-[#eaf0fb]">
       <Toast />
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 w-72 border-r border-blue-900/30 bg-[#0b3f73] text-white shadow-clinical transition-transform lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-72 border-r border-blue-950/40 bg-[#102a5c] text-white shadow-clinical transition-transform lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -117,7 +117,7 @@ export function AppLayout() {
                         clsx(
                           "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-bold transition duration-200",
                           isActive
-                            ? "bg-white text-[#0b3f73] shadow-sm shadow-blue-950/20 ring-1 ring-white/20 before:h-5 before:w-1 before:rounded-full before:bg-blue-500"
+                            ? "bg-white text-[#102a5c] shadow-sm shadow-blue-950/20 ring-1 ring-white/20 before:h-5 before:w-1 before:rounded-full before:bg-blue-700"
                             : "text-blue-50 hover:bg-white/10 hover:text-white",
                         )
                       }
