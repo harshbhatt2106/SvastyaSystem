@@ -36,6 +36,9 @@ export interface Appointment {
   appointmentDate: string;
   createdAt: string;
   createdBy: string;
+  caseType: "NEW" | "OLD";
+  consultationFee: number;
+  feeCollected: boolean;
   status: AppointmentStatus;
 }
 
@@ -57,6 +60,7 @@ export interface Prescription {
   appointmentId: string;
   doctorNotes: string;
   medicines: MedicineItem[];
+  issuedMedicines?: string[];
   createdAt: string;
 }
 

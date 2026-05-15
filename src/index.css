@@ -2,7 +2,7 @@
 
 :root {
   color: #0f172a;
-  background: #f4f7fa;
+  background: #f4f8fb;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -12,7 +12,7 @@
 
 html {
   min-width: 320px;
-  background: #f4f7fa;
+  background: #f4f8fb;
 }
 
 body {
@@ -20,7 +20,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(248, 252, 255, 0.98) 0%, rgba(244, 247, 250, 0.98) 46%, #eef3f7 100%);
+    radial-gradient(circle at top left, rgba(216, 240, 246, 0.42), transparent 34rem),
+    linear-gradient(180deg, rgba(248, 252, 255, 0.98) 0%, rgba(244, 248, 251, 0.98) 48%, #eef3f7 100%);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -75,7 +76,7 @@ main thead,
 
 main thead tr,
 .clinical-table thead tr {
-  background: #f8fafc;
+  background: #f8fbfd;
 }
 
 main th,
@@ -109,7 +110,7 @@ main tbody tr:nth-child(even),
 
 main tbody tr:hover,
 .clinical-table tbody tr:hover {
-  background-color: #eef8fb;
+  background-color: #f0f9fb;
 }
 
 input[type="checkbox"] {

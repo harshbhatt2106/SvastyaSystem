@@ -20,16 +20,18 @@ export interface ClinicState {
   logout: () => void;
   pushToast: (message: string, type?: "success" | "error" | "info") => void;
   clearToast: () => void;
-  createPatientAppointment: (patient: Omit<Patient, "id" | "totalVisits" | "lastVisitDate" | "visitHistory">, createdBy: string) => Appointment;
-  createAppointmentForExisting: (patientId: string, createdBy: string) => Appointment;
+  createPatientAppointment: (patient: Omit<Patient, "id" | "totalVisits" | "lastVisitDate" | "visitHistory">, createdBy: string, appointmentDate?: string, feeCollected?: boolean) => Appointment;
+  createAppointmentForExisting: (patientId: string, createdBy: string, appointmentDate?: string, feeCollected?: boolean) => Appointment;
   updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus) => void;
+  collectAppointmentFee: (appointmentId: string) => void;
   savePrescription: (appointmentId: string, doctorNotes: string, medicines: MedicineItem[], sendToPharmacy: boolean) => void;
   setAnnouncement: (announcement: DoctorAnnouncement) => void;
+  deleteAnnouncement: () => void;
   addInventory: (medicine: Omit<MedicineInventory, "id">) => void;
   updateInventory: (medicine: MedicineInventory) => void;
   deleteInventory: (medicineId: string) => void;
   updatePrescriptionPrices: (prescriptionId: string, prices: Record<string, number>) => void;
-  issueMedicine: (prescriptionId: string) => void;
+  issueMedicine: (prescriptionId: string, issuedMedicineNames: string[]) => void;
   addStaff: (staff: Omit<Staff, "id">) => void;
   updateStaff: (staff: Staff) => void;
   deleteStaff: (staffId: string) => void;
@@ -38,9 +40,9 @@ export interface ClinicState {
 
 const doctorUser = { username: "doctor", password: "1234", role: "Doctor" as Role, name: "Dr. Mahesh Shah" };
 
-const nextToken = (appointments: Appointment[]) => {
-  const todays = appointments.filter((appointment) => appointment.appointmentDate === today());
-  return todays.length ? Math.max(...todays.map((appointment) => appointment.tokenNumber)) + 1 : 1;
+const nextToken = (appointments: Appointment[], appointmentDate = today()) => {
+  const dayAppointments = appointments.filter((appointment) => appointment.appointmentDate === appointmentDate);
+  return dayAppointments.length ? Math.max(...dayAppointments.map((appointment) => appointment.tokenNumber)) + 1 : 1;
 };
 
 const updatePatientVisit = (patient: Patient, appointment: Appointment, notes: string, medicines: MedicineItem[]) => ({
@@ -98,7 +100,7 @@ export const useClinicStore = create<ClinicState>()(
       pushToast: (message, type = "success") => set({ toast: { id: id("toast"), message, type } }),
       clearToast: () => set({ toast: null }),
 
-      createPatientAppointment: (patientInput, createdBy) => {
+      createPatientAppointment: (patientInput, createdBy, appointmentDate = today(), feeCollected = false) => {
         const patient: Patient = {
           ...patientInput,
           id: id("p"),
@@ -109,24 +111,30 @@ export const useClinicStore = create<ClinicState>()(
         const appointment: Appointment = {
           id: id("a"),
           patientId: patient.id,
-          tokenNumber: nextToken(get().appointments),
-          appointmentDate: today(),
+          tokenNumber: nextToken(get().appointments, appointmentDate),
+          appointmentDate,
           createdAt: stamp(),
           createdBy,
+          caseType: "NEW",
+          consultationFee: 200,
+          feeCollected,
           status: "WAITING",
         };
         set((state) => ({ patients: [patient, ...state.patients], appointments: [...state.appointments, appointment] }));
         get().pushToast(`Token ${appointment.tokenNumber} created for ${patient.firstName}.`);
         return appointment;
       },
-      createAppointmentForExisting: (patientId, createdBy) => {
+      createAppointmentForExisting: (patientId, createdBy, appointmentDate = today(), feeCollected = false) => {
         const appointment: Appointment = {
           id: id("a"),
           patientId,
-          tokenNumber: nextToken(get().appointments),
-          appointmentDate: today(),
+          tokenNumber: nextToken(get().appointments, appointmentDate),
+          appointmentDate,
           createdAt: stamp(),
           createdBy,
+          caseType: "OLD",
+          consultationFee: 100,
+          feeCollected,
           status: "WAITING",
         };
         set((state) => ({ appointments: [...state.appointments, appointment] }));
@@ -141,6 +149,14 @@ export const useClinicStore = create<ClinicState>()(
         }));
         get().pushToast("Appointment status updated.");
       },
+      collectAppointmentFee: (appointmentId) => {
+        set((state) => ({
+          appointments: state.appointments.map((appointment) =>
+            appointment.id === appointmentId ? { ...appointment, feeCollected: true } : appointment,
+          ),
+        }));
+        get().pushToast("Appointment fee collected.");
+      },
       savePrescription: (appointmentId, doctorNotes, medicines, sendToPharmacy) => {
         const appointment = get().appointments.find((item) => item.id === appointmentId);
         if (!appointment) return;
@@ -151,6 +167,7 @@ export const useClinicStore = create<ClinicState>()(
           appointmentId,
           doctorNotes,
           medicines,
+          issuedMedicines: existing?.issuedMedicines ?? [],
           createdAt: stamp(),
         };
         set((state) => ({
@@ -181,7 +198,11 @@ export const useClinicStore = create<ClinicState>()(
       },
       setAnnouncement: (announcement) => {
         set({ announcement });
-        get().pushToast("Announcement updated.");
+        get().pushToast("Announcement successfully announced.");
+      },
+      deleteAnnouncement: () => {
+        set({ announcement: { message: "", startDate: today(), endDate: today(), isActive: false } });
+        get().pushToast("Announcement deleted.", "info");
       },
       addInventory: (medicine) => {
         set((state) => ({ inventory: [{ ...medicine, id: id("m") }, ...state.inventory] }));
@@ -211,23 +232,26 @@ export const useClinicStore = create<ClinicState>()(
         }));
         get().pushToast("Medicine prices updated.");
       },
-      issueMedicine: (prescriptionId) => {
+      issueMedicine: (prescriptionId, issuedMedicineNames) => {
         const prescription = get().prescriptions.find((item) => item.id === prescriptionId);
         if (!prescription) return;
-        if (prescription.medicines.some((medicine) => medicine.price <= 0)) {
-          get().pushToast("Enter medicine prices before issuing.", "error");
+        if (!issuedMedicineNames.length) {
+          get().pushToast("Select at least one medicine before issuing.", "error");
           return;
         }
         set((state) => ({
           inventory: state.inventory.map((item) => {
-            const used = prescription.medicines.find((medicine) => medicine.medicineName === item.medicineName);
+            const used = prescription.medicines.find((medicine) => medicine.medicineName === item.medicineName && issuedMedicineNames.includes(medicine.medicineName));
             return used ? { ...item, stockQty: Math.max(0, item.stockQty - used.quantity) } : item;
           }),
+          prescriptions: state.prescriptions.map((item) =>
+            item.id === prescriptionId ? { ...item, issuedMedicines: issuedMedicineNames } : item,
+          ),
           appointments: state.appointments.map((appointment) =>
             appointment.id === prescription.appointmentId ? { ...appointment, status: "MEDICINE_ISSUED" } : appointment,
           ),
         }));
-        get().pushToast("Medicine issued and stock deducted.");
+        get().pushToast("Selected medicines issued and stock deducted.");
       },
       addStaff: (staffInput) => {
         set((state) => ({ staff: [{ ...staffInput, id: id("s") }, ...state.staff] }));
@@ -265,7 +289,7 @@ export const useClinicStore = create<ClinicState>()(
   ),
 );
 
-export const currency = (value: number) => `₹${value.toFixed(2)}`;
+export const currency = (value: number) => `Rs ${value.toFixed(2)}`;
 export const fullName = (patient: Patient) => `${patient.firstName} ${patient.surname}`;
 export const todaysAppointments = (appointments: Appointment[]) => appointments.filter((appointment) => appointment.appointmentDate === today());
 export const statusLabel = (status: AppointmentStatus) => status.replaceAll("_", " ");

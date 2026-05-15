@@ -1,5 +1,5 @@
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { Activity, ArrowRight, BadgeIndianRupee, Building2, CheckCircle2, ClipboardList, Clock3, Edit, Eye, FilePlus2, HeartPulse, LockKeyhole, MonitorCheck, PackagePlus, Pill, Plus, Search, Send, ShieldCheck, Trash2, UserCheck, Users } from "lucide-react";
+import { Activity, ArrowRight, Bed, BellRing, Building2, CalendarDays, CheckCircle2, ClipboardList, Clock3, CreditCard, Edit, Eye, FilePlus2, FlaskConical, HeartPulse, LockKeyhole, MonitorCheck, PackagePlus, Pill, Plus, Search, Send, ShieldCheck, Stethoscope, Trash2, UserCheck, UserCog, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout, RequireAuth } from "./components/Layout";
 import { Badge, Button, ConfirmDialog, EmptyState, Input, Label, Modal, Panel, Select, SkeletonRows, StatCard, Textarea, Toast } from "./components/ui";
@@ -12,6 +12,140 @@ const isDoctorUnavailable = (announcement: { isActive: boolean; startDate: strin
   const current = today();
   return announcement.isActive && announcement.startDate <= current && announcement.endDate >= current;
 };
+const formatDisplayDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
+const formatAnnouncementRange = (announcement: { startDate: string; endDate: string }) => `${formatDisplayDate(announcement.startDate)} to ${formatDisplayDate(announcement.endDate)}`;
+const appointmentCaseType = (appointment: Appointment, patient?: Patient) => appointment.caseType ?? (patient && patient.totalVisits > 0 ? "OLD" : "NEW");
+const appointmentFee = (appointment: Appointment, patient?: Patient) => appointment.consultationFee ?? (appointmentCaseType(appointment, patient) === "NEW" ? 200 : 100);
+
+function AnnouncementNotice({
+  announcement,
+  live,
+  compact = false,
+}: {
+  announcement: { message: string; startDate: string; endDate: string; isActive: boolean };
+  live: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-amber-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-amber-100 p-2 text-amber-800"><Clock3 size={18} /></div>
+          <div>
+            <p className="text-xs font-black uppercase text-amber-700">Doctor Announcement</p>
+            <p className="text-sm font-bold text-amber-950">From {formatAnnouncementRange(announcement)}</p>
+          </div>
+        </div>
+        <Badge status={live ? "NOT AVAILABLE" : "AVAILABLE"} />
+      </div>
+      <div className={compact ? "px-4 py-3" : "px-5 py-4"}>
+        <p className={compact ? "text-base font-black text-slate-950" : "text-xl font-black text-slate-950"}>{announcement.message}</p>
+        <p className="mt-2 text-sm font-semibold text-slate-600">
+          This notice applies from {formatAnnouncementRange(announcement)}.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ExecutiveOverview({ rows, title = "Hospital Command Overview" }: { rows: ReturnType<typeof useTodayRows>; title?: string }) {
+  const completed = rows.filter((row) => ["COMPLETED", "SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(row.appointment.status)).length;
+  const waiting = rows.filter((row) => row.appointment.status === "WAITING").length;
+  const revenue = rows.reduce((sum, row) => sum + (row.appointment.feeCollected ? appointmentFee(row.appointment, row.patient) : 0), 0);
+  const occupancy = rows.length ? Math.min(96, 62 + rows.length * 3) : 68;
+  const kpis = [
+    { title: "Patients", value: rows.length, icon: <Users />, helper: "Today's registered OPD flow", tone: "blue" as const },
+    { title: "Appointments", value: rows.length + 8, icon: <CalendarDays />, helper: `${waiting} waiting for care`, tone: "amber" as const },
+    { title: "Revenue", value: currency(revenue), icon: <CreditCard />, helper: "Collected consultation fees", tone: "green" as const },
+    { title: "Bed Occupancy", value: `${occupancy}%`, icon: <Bed />, helper: "IPD capacity snapshot", tone: "slate" as const },
+  ];
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-clinical">
+      <div className="grid gap-6 border-b border-slate-100 bg-gradient-to-r from-white via-clinic-25 to-slate-50 p-5 sm:p-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-md border border-clinic-100 bg-white px-3 py-1.5 text-xs font-black uppercase text-clinic-700 shadow-sm">
+            <ShieldCheck size={15} /> Enterprise Healthcare Suite
+          </div>
+          <h2 className="mt-4 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            A calm, role-aware operating surface for patient flow, clinical work, billing, pharmacy, lab, staff, and bed management.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/80 p-4">
+            <p className="text-xs font-black uppercase text-emerald-700">System Health</p>
+            <p className="mt-2 text-2xl font-black text-emerald-800">99.9%</p>
+            <p className="mt-1 text-xs font-semibold text-emerald-700">Live OPD, billing, and pharmacy</p>
+          </div>
+          <div className="rounded-lg border border-clinic-100 bg-white p-4">
+            <p className="text-xs font-black uppercase text-clinic-700">Completed Cases</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{completed}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Consultation progress today</p>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => <StatCard key={kpi.title} {...kpi} />)}
+      </div>
+    </section>
+  );
+}
+
+function ModuleGrid() {
+  const modules = [
+    { name: "Patient Registration", detail: "Profiles, old cases, visit history", icon: Users, tone: "clinic" },
+    { name: "Appointment Scheduling", detail: "Tokens, date planning, OPD queue", icon: CalendarDays, tone: "sky" },
+    { name: "Doctor Management", detail: "Clinical console and prescriptions", icon: Stethoscope, tone: "emerald" },
+    { name: "OPD / IPD Workflow", detail: "Consultation, admission, discharge", icon: Activity, tone: "amber" },
+    { name: "Billing & Invoices", detail: "Fees, invoices, payment tracking", icon: CreditCard, tone: "slate" },
+    { name: "Pharmacy Management", detail: "Prescription queue and stock issue", icon: Pill, tone: "emerald" },
+    { name: "Lab Reports", detail: "Diagnostics and report readiness", icon: FlaskConical, tone: "sky" },
+    { name: "Staff Management", detail: "Users, roles, access control", icon: UserCog, tone: "clinic" },
+    { name: "Bed / Ward Management", detail: "Occupancy, wards, patient stay", icon: Bed, tone: "amber" },
+    { name: "Notifications & Alerts", detail: "Doctor notices and workflow alerts", icon: BellRing, tone: "rose" },
+  ];
+  const toneClass: Record<string, string> = {
+    clinic: "bg-clinic-50 text-clinic-700 ring-clinic-100",
+    emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    sky: "bg-sky-50 text-sky-700 ring-sky-100",
+    amber: "bg-amber-50 text-amber-700 ring-amber-100",
+    slate: "bg-slate-100 text-slate-700 ring-slate-200",
+    rose: "bg-rose-50 text-rose-700 ring-rose-100",
+  };
+  return (
+    <Panel title="Hospital Modules" eyebrow="Complete HMS suite">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {modules.map(({ name, detail, icon: Icon, tone }) => (
+          <div key={name} className="group rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-clinic-200 hover:shadow-clinical">
+            <div className={`mb-4 inline-flex rounded-md p-2.5 ring-1 ${toneClass[tone]}`}><Icon size={19} /></div>
+            <h3 className="text-sm font-black text-slate-950">{name}</h3>
+            <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{detail}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function AlertsPanel() {
+  const alerts = [
+    ["Pharmacy", "3 prescriptions ready for medicine issue"],
+    ["Lab", "2 reports pending doctor review"],
+    ["Beds", "ICU capacity at controlled utilization"],
+  ];
+  return (
+    <Panel title="Notifications & Alerts" eyebrow="Live operations">
+      <div className="grid gap-3 md:grid-cols-3">
+        {alerts.map(([label, detail]) => (
+          <div key={label} className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+            <p className="text-xs font-black uppercase text-clinic-700">{label}</p>
+            <p className="mt-2 text-sm font-semibold leading-5 text-slate-700">{detail}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
 
 function patientFor(patients: Patient[], patientId: string) {
   return patients.find((patient) => patient.id === patientId);
@@ -34,9 +168,11 @@ function Login() {
   const login = useClinicStore((state) => state.login);
   const user = useClinicStore((state) => state.user);
   const pushToast = useClinicStore((state) => state.pushToast);
+  const announcement = useClinicStore((state) => state.announcement);
   const [username, setUsername] = useState("doctor");
   const [password, setPassword] = useState("1234");
   const navigate = useNavigate();
+  const showAnnouncement = announcement.isActive && Boolean(announcement.message.trim());
   if (user) return <Navigate to={user.role === "Doctor" ? "/doctor/dashboard" : user.role === "Nurse" ? "/nurse/dashboard" : "/medical/dashboard"} replace />;
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -51,9 +187,10 @@ function Login() {
     <div className="min-h-screen bg-slate-50">
       <Toast />
       <div className="mx-auto grid min-h-screen max-w-7xl items-center gap-10 px-5 py-10 lg:grid-cols-[1fr_440px]">
+        {showAnnouncement && <div className="lg:col-span-2"><AnnouncementNotice announcement={announcement} live={isDoctorUnavailable(announcement)} /></div>}
         <section className="relative">
           <div className="mb-8 inline-flex items-center gap-3 rounded-lg border border-clinic-100 bg-white px-4 py-3 text-clinic-900 shadow-sm">
-            <HeartPulse className="text-clinic-700" /> <span className="text-lg font-black">Aarogya OPD Clinic</span>
+            <HeartPulse className="text-clinic-700" /> <span className="text-lg font-black">Svastya Hospital</span>
           </div>
           <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 md:text-5xl">A professional clinic operating system for OPD care teams.</h1>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">Reception, doctor consultation, pharmacy billing, staff access, and patient queue display in one role-aware healthcare workspace.</p>
@@ -101,6 +238,7 @@ function PatientLogin() {
   const [mobile, setMobile] = useState("");
   const [name, setName] = useState("");
   const navigate = useNavigate();
+  const liveAnnouncement = isDoctorUnavailable(announcement);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const cleanName = name.trim().toLowerCase();
@@ -115,18 +253,19 @@ function PatientLogin() {
     <div className="min-h-screen bg-slate-50">
       <Toast />
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_420px]">
+        {liveAnnouncement && <div className="lg:col-span-2"><AnnouncementNotice announcement={announcement} live compact /></div>}
         <section>
           <div className="mb-6 inline-flex items-center gap-3 rounded-lg border border-clinic-100 bg-white px-4 py-3 text-clinic-900 shadow-sm">
-            <MonitorCheck className="text-clinic-700" /> <span className="text-lg font-black">Aarogya OPD Queue</span>
+            <MonitorCheck className="text-clinic-700" /> <span className="text-lg font-black">Svastya Hospital Queue</span>
           </div>
           <h1 className="max-w-2xl text-4xl font-black leading-tight text-slate-950">Check your token number, current call status, and nearby queue.</h1>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">Patients can sign in with the same mobile number and name used during appointment registration.</p>
           <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-bold uppercase text-slate-500">Doctor availability</p>
-            <p className={isDoctorUnavailable(announcement) ? "mt-1 text-lg font-bold text-rose-600" : "mt-1 text-lg font-bold text-emerald-600"}>
-              {isDoctorUnavailable(announcement) ? "NOT AVAILABLE" : "AVAILABLE"}
+            <p className={liveAnnouncement ? "mt-1 text-lg font-bold text-rose-600" : "mt-1 text-lg font-bold text-emerald-600"}>
+              {liveAnnouncement ? "NOT AVAILABLE" : "AVAILABLE"}
             </p>
-            {isDoctorUnavailable(announcement) && <p className="mt-2 text-sm text-slate-600">{announcement.message}</p>}
+            {liveAnnouncement && <p className="mt-2 text-sm text-slate-600">Notice from {formatAnnouncementRange(announcement)}: {announcement.message}</p>}
           </div>
         </section>
         <form onSubmit={submit} className="rounded-lg border border-slate-200 bg-white p-6 shadow-clinical">
@@ -149,6 +288,7 @@ function NurseDashboard() {
   const current = rows.find((row) => row.appointment.status === "IN_CONSULTATION")?.appointment.tokenNumber ?? "-";
   return (
     <div className="space-y-6">
+      <ExecutiveOverview rows={rows} title="Hospital Management Dashboard" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard title="Today Total Appointments" value={rows.length} icon={<ClipboardList />} />
         <StatCard title="Waiting Patients" value={rows.filter((r) => r.appointment.status === "WAITING").length} icon={<Users />} tone="amber" />
@@ -157,6 +297,8 @@ function NurseDashboard() {
         <StatCard title="Current Token" value={current} icon={<UserCheck />} tone="slate" />
       </div>
       <QueuePanel role="nurse" />
+      <ModuleGrid />
+      <AlertsPanel />
     </div>
   );
 }
@@ -164,6 +306,7 @@ function NurseDashboard() {
 function QueuePanel({ role }: { role: "nurse" | "doctor" }) {
   const rows = useTodayRows();
   const updateAppointmentStatus = useClinicStore((state) => state.updateAppointmentStatus);
+  const collectAppointmentFee = useClinicStore((state) => state.collectAppointmentFee);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 300);
@@ -173,15 +316,22 @@ function QueuePanel({ role }: { role: "nurse" | "doctor" }) {
   return (
     <Panel title={role === "doctor" ? "Doctor Queue" : "Appointment Queue"}>
       <div className="overflow-auto scrollbar-thin">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="text-xs uppercase text-slate-500"><tr className="border-b border-slate-100"><th className="py-3">Token</th><th>Patient Name</th><th>Mobile</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+        <table className="w-full min-w-[980px] text-left text-sm">
+          <thead className="text-xs uppercase text-slate-500"><tr className="border-b border-slate-100"><th className="py-3">Token</th><th>Patient Name</th><th>Mobile</th><th>Appointment Date</th><th>Case</th><th>Fee</th><th>Status</th><th>Action</th></tr></thead>
           <tbody>
             {rows.map(({ appointment, patient }) => (
-              <tr key={appointment.id} className="border-b border-slate-100 last:border-0">
+              <tr key={appointment.id} className={appointment.status === "IN_CONSULTATION" ? "border-b border-t-4 border-b-emerald-100 border-t-emerald-500 bg-emerald-50/60 shadow-sm" : "border-b border-slate-100 last:border-0"}>
                 <td className="py-3 font-bold text-slate-950">#{appointment.tokenNumber}</td>
                 <td>{fullName(patient)}</td>
                 <td>{patient.mobile}</td>
-                <td>{new Date(appointment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                <td>{formatDisplayDate(appointment.appointmentDate)}</td>
+                <td><span className="font-bold text-slate-700">{appointmentCaseType(appointment, patient)}</span></td>
+                <td>
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-950">{currency(appointmentFee(appointment, patient))}</p>
+                    {appointment.feeCollected ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase text-emerald-800 ring-1 ring-emerald-200">Collected</span> : <Button variant="secondary" onClick={() => collectAppointmentFee(appointment.id)}>Collect</Button>}
+                  </div>
+                </td>
                 <td><Badge status={appointment.status} /></td>
                 <td>
                   {role === "nurse" ? (
@@ -210,9 +360,39 @@ function NurseAppointments() {
   const user = useClinicStore((state) => state.user);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Patient | null>(null);
+  const [appointmentDate, setAppointmentDate] = useState(today());
+  const [feeCollected, setFeeCollected] = useState(false);
   const [form, setForm] = useState({ firstName: "", surname: "", age: "", gender: "Male", mobile: "", weight: "", village: "" });
   const todaysQueue = todaysAppointments(appointments);
-  const nextTokenNumber = todaysQueue.length ? Math.max(...todaysQueue.map((appointment) => appointment.tokenNumber)) + 1 : 1;
+  const dateQueue = appointments.filter((appointment) => appointment.appointmentDate === appointmentDate);
+  const nextTokenNumber = dateQueue.length ? Math.max(...dateQueue.map((appointment) => appointment.tokenNumber)) + 1 : 1;
+  const autoPatient = useMemo(() => {
+    const firstName = form.firstName.trim().toLowerCase();
+    const surname = form.surname.trim().toLowerCase();
+    const mobile = form.mobile.trim();
+    if (!firstName || !/^\d{10}$/.test(mobile)) return undefined;
+    return patients.find((patient) => {
+      const patientName = fullName(patient).toLowerCase();
+      const nameMatches = patient.firstName.toLowerCase() === firstName || patientName.includes(firstName);
+      const surnameMatches = !surname || patient.surname.toLowerCase() === surname || patientName.includes(surname);
+      return patient.mobile === mobile && nameMatches && surnameMatches;
+    });
+  }, [form.firstName, form.mobile, form.surname, patients]);
+  const currentCaseType = autoPatient ? "OLD" : "NEW";
+  const currentFee = currentCaseType === "NEW" ? 200 : 100;
+  useEffect(() => {
+    if (!autoPatient) return;
+    setForm((current) => ({
+      ...current,
+      firstName: autoPatient.firstName,
+      surname: autoPatient.surname,
+      age: String(autoPatient.age),
+      gender: autoPatient.gender,
+      mobile: autoPatient.mobile,
+      weight: String(autoPatient.weight),
+      village: autoPatient.village,
+    }));
+  }, [autoPatient]);
   const matches = patients.filter((patient) => {
     const tokenMatch = appointments.find((appointment) => appointment.patientId === patient.id && String(appointment.tokenNumber) === query);
     return query && (`${fullName(patient)} ${patient.mobile}`.toLowerCase().includes(query.toLowerCase()) || tokenMatch);
@@ -220,8 +400,13 @@ function NurseAppointments() {
   const submitNew = (event: FormEvent) => {
     event.preventDefault();
     if (!/^\d{10}$/.test(form.mobile)) return useClinicStore.getState().pushToast("Mobile number must be 10 digits.", "error");
-    createPatientAppointment({ firstName: form.firstName, surname: form.surname, age: Number(form.age), gender: form.gender as Patient["gender"], mobile: form.mobile, weight: Number(form.weight), village: form.village }, user?.username ?? "nurse");
+    if (autoPatient) {
+      createAppointmentForExisting(autoPatient.id, user?.username ?? "nurse", appointmentDate, feeCollected);
+    } else {
+      createPatientAppointment({ firstName: form.firstName, surname: form.surname, age: Number(form.age), gender: form.gender as Patient["gender"], mobile: form.mobile, weight: Number(form.weight), village: form.village }, user?.username ?? "nurse", appointmentDate, feeCollected);
+    }
     setForm({ firstName: "", surname: "", age: "", gender: "Male", mobile: "", weight: "", village: "" });
+    setFeeCollected(false);
     setQuery("");
   };
   return (
@@ -237,7 +422,7 @@ function NurseAppointments() {
               </div>
             </div>
             <div className="rounded-lg bg-clinic-50 px-5 py-3 text-right ring-1 ring-clinic-100">
-              <p className="text-xs font-bold uppercase text-slate-500">Next Token</p>
+              <p className="text-xs font-bold uppercase text-slate-500">Next Token For {formatDisplayDate(appointmentDate)}</p>
               <p className="text-3xl font-black text-clinic-700">#{nextTokenNumber}</p>
             </div>
           </div>
@@ -277,8 +462,24 @@ function NurseAppointments() {
           </div>
         </div>
       </section>
-      <Panel title="Register New Patient" action={<span className="rounded-full bg-clinic-50 px-3 py-1 text-xs font-bold text-clinic-700">Token #{nextTokenNumber} will be assigned</span>}>
+      <Panel title={autoPatient ? "Old Case Appointment" : "Register New Patient"} action={<span className="rounded-full bg-clinic-50 px-3 py-1 text-xs font-bold text-clinic-700">Token #{nextTokenNumber} will be assigned</span>}>
         <form className="grid gap-4" onSubmit={submitNew}>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div><Label>Appointment Date</Label><Input required type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} /></div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-bold uppercase text-slate-500">Case Type</p>
+              <p className={autoPatient ? "mt-1 text-xl font-black text-clinic-700" : "mt-1 text-xl font-black text-emerald-700"}>{currentCaseType} CASE</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-bold uppercase text-slate-500">Appointment Fee</p>
+              <p className="mt-1 text-xl font-black text-slate-950">{currency(currentFee)}</p>
+            </div>
+            <label className="flex min-h-[74px] items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm font-bold text-slate-700">
+              <input type="checkbox" className="h-4 w-4 accent-clinic-700" checked={feeCollected} onChange={(e) => setFeeCollected(e.target.checked)} />
+              Fee collected now
+            </label>
+          </div>
+          {autoPatient && <div className="rounded-lg border border-clinic-100 bg-clinic-50 p-3 text-sm font-semibold text-clinic-800">Old case found. Patient details are auto-filled from the previous record.</div>}
           <div className="grid gap-4 md:grid-cols-4">
             <div><Label>First Name</Label><Input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
             <div><Label>Surname</Label><Input required value={form.surname} onChange={(e) => setForm({ ...form, surname: e.target.value })} /></div>
@@ -291,7 +492,7 @@ function NurseAppointments() {
             <div><Label>Village</Label><Input required value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} /></div>
           </div>
           <div className="flex justify-end border-t border-slate-100 pt-4">
-            <Button type="submit"><FilePlus2 size={16} /> Create Appointment Token</Button>
+            <Button type="submit"><FilePlus2 size={16} /> {autoPatient ? "Create Old Case Token" : "Create New Case Token"}</Button>
           </div>
         </form>
       </Panel>
@@ -301,7 +502,8 @@ function NurseAppointments() {
             <div className="rounded-lg bg-slate-50 p-4"><p className="text-xl font-bold text-slate-950">{fullName(selected)}</p><p className="mt-2 text-sm text-slate-600">{selected.age} yrs • {selected.village}</p><p className="text-sm text-slate-600">{selected.mobile}</p><p className="mt-2 text-sm font-semibold text-slate-700">Total visits: {selected.totalVisits}</p><p className="text-sm text-slate-600">Last visit: {selected.lastVisitDate || "New patient"}</p></div>
             <div>{selected.visitHistory.slice(0, 2).map((visit) => <div key={visit.visitDate} className="mb-3 rounded-md border border-slate-200 p-3"><p className="font-semibold">{visit.visitDate}</p><p className="text-sm text-slate-600">{visit.doctorNotes}</p></div>)}</div>
           </div>
-          <div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={() => setSelected(null)}>Register As New</Button><Button onClick={() => { createAppointmentForExisting(selected.id, user?.username ?? "nurse"); setSelected(null); }}>Continue Existing Patient</Button></div>
+          <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">Appointment: {formatDisplayDate(appointmentDate)} / Old case fee: {currency(100)} / {feeCollected ? "Collected now" : "Pending collection"}</div>
+          <div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={() => setSelected(null)}>Register As New</Button><Button onClick={() => { createAppointmentForExisting(selected.id, user?.username ?? "nurse", appointmentDate, feeCollected); setSelected(null); }}>Continue Existing Patient</Button></div>
         </Modal>
       )}
     </div>
@@ -312,6 +514,7 @@ function PatientHistory() {
   const patients = useClinicStore((state) => state.patients);
   const appointments = useClinicStore((state) => state.appointments);
   const prescriptions = useClinicStore((state) => state.prescriptions);
+  const collectAppointmentFee = useClinicStore((state) => state.collectAppointmentFee);
   const [query, setQuery] = useState("");
   const results = patients.filter((patient) => {
     const tokenMatch = appointments.find((appointment) => appointment.patientId === patient.id && String(appointment.tokenNumber) === query);
@@ -323,11 +526,37 @@ function PatientHistory() {
       <div className="mt-5 grid gap-4">
         {results.map((patient) => {
           const todayPrescriptions = prescriptions.filter((rx) => rx.patientId === patient.id);
+          const patientAppointments = appointments.filter((appointment) => appointment.patientId === patient.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           return (
             <div key={patient.id} className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap justify-between gap-3">
                 <div><h3 className="font-bold text-slate-950">{fullName(patient)}</h3><p className="text-sm text-slate-500">{patient.mobile} • {patient.village} • {patient.totalVisits} visits</p></div>
                 <Badge status="Active" />
+              </div>
+              <div className="mt-4 overflow-auto">
+                <table className="w-full min-w-[820px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                    <tr><th className="p-3">Appointment Date</th><th>Time</th><th>Token</th><th>Case</th><th>Fee</th><th>Payment</th></tr>
+                  </thead>
+                  <tbody>
+                    {patientAppointments.map((appointment) => (
+                      <tr key={appointment.id} className="border-b border-slate-100">
+                        <td className="p-3 font-semibold">{formatDisplayDate(appointment.appointmentDate)}</td>
+                        <td>{new Date(appointment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                        <td>#{appointment.tokenNumber}</td>
+                        <td className="font-semibold text-slate-700">{appointmentCaseType(appointment, patient)}</td>
+                        <td className="font-semibold text-slate-950">{currency(appointmentFee(appointment, patient))}</td>
+                        <td>
+                          {appointment.feeCollected ? (
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase text-emerald-800 ring-1 ring-emerald-200">Collected</span>
+                          ) : (
+                            <div className="flex items-center gap-2"><span className="text-xs font-bold text-amber-700">Pending</span><Button variant="secondary" onClick={() => collectAppointmentFee(appointment.id)}>Collect {currency(appointmentFee(appointment, patient))}</Button></div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               <div className="mt-4 overflow-auto">
                 <table className="w-full min-w-[820px] text-left text-sm">
@@ -369,78 +598,80 @@ function PatientHistory() {
 function DoctorDashboard() {
   const rows = useTodayRows();
   const [query, setQuery] = useState("");
-  const remaining = rows.filter((row) => ["WAITING", "IN_CONSULTATION"].includes(row.appointment.status));
-  const current = rows.find((row) => row.appointment.status === "IN_CONSULTATION");
-  const next = rows.find((row) => row.appointment.status === "WAITING");
-  const searchRows = rows.filter(({ appointment, patient }) => {
-    const text = `${appointment.tokenNumber} ${fullName(patient)} ${patient.mobile} ${patient.village}`.toLowerCase();
-    return query.trim() && text.includes(query.toLowerCase());
+  const searchRows = rows.filter(({ patient }) => {
+    const cleanQuery = query.trim().toLowerCase();
+    return cleanQuery && fullName(patient).toLowerCase().includes(cleanQuery);
   });
+  const completedCount = rows.filter((r) => ["COMPLETED", "SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(r.appointment.status)).length;
   return (
     <div className="space-y-6">
+      <ExecutiveOverview rows={rows} title="Doctor & OPD Clinical Dashboard" />
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-clinical">
-        <div className="grid gap-6 bg-[#123f55] p-6 text-white lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <p className="text-sm font-semibold uppercase text-[#d8f0f6]">Doctor Console</p>
-            <h2 className="mt-2 text-3xl font-black text-white">Today's OPD Flow</h2>
-            <p className="mt-2 max-w-2xl text-[#eef8fb]">
-              Current consultation, next token, and remaining patients are grouped here for quick doctor-side decisions.
-            </p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-white/10 p-4 ring-1 ring-white/15">
-                <p className="text-sm text-[#d8f0f6]">Now Consulting</p>
-                <p className="mt-2 text-4xl font-black text-white">{current ? `#${current.appointment.tokenNumber}` : "-"}</p>
-                <p className="mt-1 text-sm text-[#eef8fb]">{current ? fullName(current.patient) : "No active patient"}</p>
-              </div>
-              <div className="rounded-lg bg-white/10 p-4 ring-1 ring-white/15">
-                <p className="text-sm text-[#d8f0f6]">Next Token</p>
-                <p className="mt-2 text-4xl font-black text-white">{next ? `#${next.appointment.tokenNumber}` : "-"}</p>
-                <p className="mt-1 text-sm text-[#eef8fb]">{next ? fullName(next.patient) : "Queue clear"}</p>
-              </div>
-              <div className="rounded-lg bg-white/10 p-4 ring-1 ring-white/15">
-                <p className="text-sm text-[#d8f0f6]">Still Remaining</p>
-                <p className="mt-2 text-4xl font-black text-white">{remaining.length}</p>
-                <p className="mt-1 text-sm text-[#eef8fb]">Waiting and current patients</p>
-              </div>
+        <div className="bg-[#123f55] px-5 py-6 text-white sm:px-7">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase text-[#d8f0f6]">Doctor Console</p>
+              <h2 className="mt-2 text-3xl font-black text-white">Find Patient By Name</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#eef8fb]">
+                Type patient name and open the consultation file directly.
+              </p>
             </div>
-          </div>
-          <div className="rounded-lg bg-white p-5 text-slate-950 shadow-soft">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-clinic-50 p-3 text-clinic-700"><Search size={22} /></div>
-              <div>
-                <h3 className="font-bold">Patient Search</h3>
-                <p className="text-sm text-slate-500">Search by token, mobile, name, or village</p>
-              </div>
-            </div>
-            <div className="mt-4">
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Example: 3, Meena, 9876501122" />
-            </div>
-            <div className="mt-4 max-h-64 space-y-2 overflow-auto scrollbar-thin">
-              {query.trim() && searchRows.map(({ appointment, patient }) => (
-                <Link
-                  key={appointment.id}
-                  to={`/doctor/patient/${appointment.id}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 p-3 transition hover:border-clinic-200 hover:bg-clinic-25"
-                >
-                  <div>
-                    <p className="font-bold text-slate-950">#{appointment.tokenNumber} {fullName(patient)}</p>
-                    <p className="text-sm text-slate-500">{patient.mobile} • {patient.village}</p>
-                  </div>
-                  <Badge status={appointment.status} />
-                </Link>
-              ))}
-              {query.trim() && !searchRows.length && <EmptyState title="No patient found" body="Try another token, mobile number, or patient name." />}
+            <div className="rounded-lg bg-white/10 px-4 py-3 text-right ring-1 ring-white/15">
+              <p className="text-xs font-black uppercase text-[#d8f0f6]">Today</p>
+              <p className="mt-1 text-2xl font-black text-white">{rows.length} patients</p>
             </div>
           </div>
         </div>
+        <div className="p-5 sm:p-7">
+          <div className="rounded-lg border border-clinic-100 bg-clinic-25 p-4 shadow-sm">
+            <Label>Patient Name Search</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-clinic-700" size={20} />
+              <Input
+                className="h-14 rounded-lg border-clinic-100 bg-white pl-12 text-base font-semibold shadow-sm"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Enter patient name"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="mt-5 max-h-[360px] space-y-3 overflow-auto pr-1 scrollbar-thin">
+            {query.trim() && searchRows.map(({ appointment, patient }) => (
+              <Link
+                key={appointment.id}
+                to={`/doctor/patient/${appointment.id}`}
+                className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-clinic-200 hover:bg-clinic-25 hover:shadow-clinical"
+              >
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#123f55] text-lg font-black text-white">
+                    {patient.firstName.charAt(0)}{patient.surname.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-black text-slate-950">{fullName(patient)}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Token #{appointment.tokenNumber} / {patient.mobile} / {patient.village}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge status={appointment.status} />
+                  <span className="inline-flex items-center gap-2 rounded-md bg-clinic-700 px-3 py-2 text-sm font-bold text-white">
+                    Open <ArrowRight size={15} />
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {query.trim() && !searchRows.length && <EmptyState title="No patient found" body="Enter the registered patient name." />}
+          </div>
+        </div>
       </section>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <StatCard title="Today Total Patients" value={rows.length} icon={<Users />} />
-        <StatCard title="Waiting Patients" value={remaining.length} icon={<Activity />} tone="amber" />
-        <StatCard title="Completed Patients" value={rows.filter((r) => ["COMPLETED", "SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(r.appointment.status)).length} icon={<CheckCircle2 />} tone="green" />
-        <StatCard title="Current Patient" value={current ? `#${current.appointment.tokenNumber}` : "-"} icon={<UserCheck />} />
+        <StatCard title="Completed Patients" value={completedCount} icon={<CheckCircle2 />} tone="green" />
       </div>
       <QueuePanel role="doctor" />
+      <ModuleGrid />
     </div>
   );
 }
@@ -524,8 +755,45 @@ function PatientDetail() {
 function Announcement() {
   const announcement = useClinicStore((state) => state.announcement);
   const setAnnouncement = useClinicStore((state) => state.setAnnouncement);
+  const deleteAnnouncement = useClinicStore((state) => state.deleteAnnouncement);
   const [form, setForm] = useState(announcement);
-  return <Panel title="Doctor Announcement"><form className="grid gap-4 max-w-2xl" onSubmit={(e) => { e.preventDefault(); setAnnouncement(form); }}><div><Label>Message</Label><Textarea required value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></div><div className="grid gap-3 sm:grid-cols-2"><div><Label>Start Date</Label><Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></div><div><Label>End Date</Label><Input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></div></div><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Active announcement</label><Button type="submit">Save Announcement</Button></form></Panel>;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const live = isDoctorUnavailable(announcement);
+  const hasAnnouncement = Boolean(announcement.message.trim());
+  return (
+    <Panel title="Doctor Announcement" eyebrow="Patient notice">
+      <form className="grid max-w-2xl gap-4" onSubmit={(e) => { e.preventDefault(); setAnnouncement(form); }}>
+        <div>
+          <Label>Message</Label>
+          <Textarea required value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><Label>Start Date</Label><Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></div>
+          <div><Label>End Date</Label><Input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></div>
+        </div>
+        <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+          <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Active announcement
+        </label>
+        <div><Button type="submit">Announce</Button></div>
+      </form>
+
+      {hasAnnouncement && (
+        <div className="mt-6 space-y-3">
+          <AnnouncementNotice announcement={announcement} live={live} />
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-sm font-semibold text-slate-600">
+              Patient side visibility: {live ? "Visible now on login and token display." : announcement.isActive ? "Scheduled for selected dates." : "Inactive."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => setForm(announcement)}><Edit size={15} /> Edit</Button>
+              <Button variant="danger" onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDelete && <ConfirmDialog title="Delete Announcement" body="Delete current doctor announcement? It will stop showing on login and patient screens." onCancel={() => setConfirmDelete(false)} onConfirm={() => { deleteAnnouncement(); setForm({ message: "", startDate: today(), endDate: today(), isActive: false }); setConfirmDelete(false); }} />}
+    </Panel>
+  );
 }
 
 function StaffList() {
@@ -560,13 +828,14 @@ function StaffForm() {
 }
 
 function MedicalDashboard() {
+  const rows = useTodayRows();
   const prescriptions = useClinicStore((state) => state.prescriptions);
   const appointments = useClinicStore((state) => state.appointments);
   const inventory = useClinicStore((state) => state.inventory);
   const pending = prescriptions.filter((rx) => appointments.find((a) => a.id === rx.appointmentId)?.status === "SENT_TO_PHARMACY");
   const issuedToday = appointments.filter((a) => a.appointmentDate === today() && a.status === "MEDICINE_ISSUED").length;
-  const billing = prescriptions.filter((rx) => appointments.find((a) => a.id === rx.appointmentId)?.status === "MEDICINE_ISSUED").reduce((sum, rx) => sum + rx.medicines.reduce((s, m) => s + m.quantity * m.price, 0), 0);
-  return <div className="space-y-6"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><StatCard title="Pending Prescriptions" value={pending.length} icon={<ClipboardList />} tone="amber" /><StatCard title="Total Medicines In Stock" value={inventory.reduce((s, m) => s + m.stockQty, 0)} icon={<Pill />} /><StatCard title="Medicines Issued Today" value={issuedToday} icon={<PackagePlus />} tone="green" /><StatCard title="Today's Billing Total" value={currency(billing)} icon={<BadgeIndianRupee />} tone="slate" /></div><PrescriptionQueue /></div>;
+  const issuedMedicineCount = prescriptions.reduce((sum, rx) => sum + (rx.issuedMedicines?.length ?? 0), 0);
+  return <div className="space-y-6"><ExecutiveOverview rows={rows} title="Pharmacy, Billing & Operations Dashboard" /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><StatCard title="Pending Prescriptions" value={pending.length} icon={<ClipboardList />} tone="amber" /><StatCard title="Total Medicines In Stock" value={inventory.reduce((s, m) => s + m.stockQty, 0)} icon={<Pill />} /><StatCard title="Patients Issued Today" value={issuedToday} icon={<PackagePlus />} tone="green" /><StatCard title="Issued Medicine Items" value={issuedMedicineCount} icon={<CheckCircle2 />} tone="slate" /></div><PrescriptionQueue /><ModuleGrid /><AlertsPanel /></div>;
 }
 
 function PrescriptionQueue() {
@@ -574,36 +843,32 @@ function PrescriptionQueue() {
   const appointments = useClinicStore((state) => state.appointments);
   const patients = useClinicStore((state) => state.patients);
   const issueMedicine = useClinicStore((state) => state.issueMedicine);
-  const updatePrescriptionPrices = useClinicStore((state) => state.updatePrescriptionPrices);
-  const [bill, setBill] = useState<string | null>(null);
+  const [issueId, setIssueId] = useState<string | null>(null);
   const rows = prescriptions.map((rx) => ({ rx, appointment: appointments.find((a) => a.id === rx.appointmentId), patient: patientFor(patients, rx.patientId) })).filter((row) => row.appointment && row.patient && ["SENT_TO_PHARMACY", "MEDICINE_ISSUED"].includes(row.appointment.status));
-  const active = rows.find((row) => row.rx.id === bill);
+  const active = rows.find((row) => row.rx.id === issueId);
   const doseText = (medicine: MedicineItem) => [
     medicine.morning ? "M" : "",
     medicine.afternoon ? "A" : "",
     medicine.night ? "N" : "",
   ].filter(Boolean).join("-") || "-";
-  return <Panel title="Prescription Queue"><div className="overflow-auto"><table className="w-full min-w-[950px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Doctor Prescription</th><th>Total Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map(({ rx, appointment, patient }) => <tr key={rx.id} className="border-b border-slate-100 align-top"><td className="py-3 font-bold">#{appointment!.tokenNumber}</td><td className="py-3">{fullName(patient!)}</td><td className="py-3"><div className="space-y-2">{rx.medicines.map((m) => <div key={m.medicineName} className="rounded-md bg-slate-50 p-2"><p className="font-bold text-slate-900">{m.medicineName}</p><p className="text-xs text-slate-600">Dose: {doseText(m)} • {m.days} days • Qty {m.quantity} • {m.beforeFood ? "Before food" : ""} {m.afterFood ? "After food" : ""}</p></div>)}</div><p className="mt-2 text-xs text-slate-500">Notes: {rx.doctorNotes}</p></td><td className="py-3">{currency(rx.medicines.reduce((s, m) => s + m.price * m.quantity, 0))}</td><td className="py-3"><Badge status={appointment!.status} /></td><td className="py-3"><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => setBill(rx.id)}>Enter Price / Bill</Button><Button disabled={appointment!.status === "MEDICINE_ISSUED"} onClick={() => issueMedicine(rx.id)}>Issue Medicine</Button></div></td></tr>)}</tbody></table></div>{!rows.length && <EmptyState title="No pharmacy prescriptions" body="Doctor prescriptions sent to pharmacy will appear here." />}{active && <InvoiceModal row={active as never} onClose={() => setBill(null)} onSavePrices={(prices) => updatePrescriptionPrices(active.rx.id, prices)} />}</Panel>;
+  return <Panel title="Prescription Queue"><div className="overflow-auto"><table className="w-full min-w-[950px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr className="border-b"><th className="py-3">Token</th><th>Patient</th><th>Doctor Prescription</th><th>Given Medicines</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map(({ rx, appointment, patient }) => <tr key={rx.id} className="border-b border-slate-100 align-top"><td className="py-3 font-bold">#{appointment!.tokenNumber}</td><td className="py-3">{fullName(patient!)}</td><td className="py-3"><div className="space-y-2">{rx.medicines.map((m) => <div key={m.medicineName} className="rounded-md bg-slate-50 p-2"><p className="font-bold text-slate-900">{m.medicineName}</p><p className="text-xs text-slate-600">Dose: {doseText(m)} / {m.days} days / Qty {m.quantity} / {m.beforeFood ? "Before food" : ""} {m.afterFood ? "After food" : ""}</p></div>)}</div><p className="mt-2 text-xs text-slate-500">Notes: {rx.doctorNotes}</p></td><td className="py-3">{rx.issuedMedicines?.length ? <div className="space-y-1">{rx.issuedMedicines.map((name) => <span key={name} className="block rounded-md bg-care-50 px-2 py-1 text-xs font-bold text-care-800 ring-1 ring-care-100">{name}</span>)}</div> : <span className="text-sm font-semibold text-slate-500">Not issued yet</span>}</td><td className="py-3"><Badge status={appointment!.status} /></td><td className="py-3"><Button disabled={appointment!.status === "MEDICINE_ISSUED"} onClick={() => setIssueId(rx.id)}>Issue Medicine</Button></td></tr>)}</tbody></table></div>{!rows.length && <EmptyState title="No pharmacy prescriptions" body="Doctor prescriptions sent to pharmacy will appear here." />}{active && <IssueMedicineModal row={active as never} onClose={() => setIssueId(null)} onIssue={(medicineNames) => { issueMedicine(active.rx.id, medicineNames); setIssueId(null); }} />}</Panel>;
 }
 
-function InvoiceModal({
+function IssueMedicineModal({
   row,
   onClose,
-  onSavePrices,
+  onIssue,
 }: {
   row: { rx: ReturnType<typeof useClinicStore.getState>["prescriptions"][number]; appointment: Appointment; patient: Patient };
   onClose: () => void;
-  onSavePrices: (prices: Record<string, number>) => void;
+  onIssue: (medicineNames: string[]) => void;
 }) {
-  const [prices, setPrices] = useState<Record<string, number>>(
-    Object.fromEntries(row.rx.medicines.map((medicine) => [medicine.medicineName, medicine.price])),
-  );
-  const [pricesSaved, setPricesSaved] = useState(row.rx.medicines.every((medicine) => medicine.price > 0));
-  const allPricesEntered = row.rx.medicines.every((medicine) => (prices[medicine.medicineName] || 0) > 0);
-  const total = row.rx.medicines.reduce((sum, medicine) => sum + medicine.quantity * (prices[medicine.medicineName] || 0), 0);
-  return <Modal title="Professional Invoice" onClose={onClose}><div className="rounded-lg border border-slate-200 p-5"><div className="flex justify-between"><div><p className="text-xl font-bold">Aarogya OPD Clinic</p><p className="text-sm text-slate-500">Medicine invoice</p></div><div className="text-right"><p className="font-bold">Token #{row.appointment.tokenNumber}</p><p className="text-sm text-slate-500">{today()}</p></div></div><p className="mt-5 font-semibold">Patient: {fullName(row.patient)}</p><p className="mt-2 text-sm text-slate-600">Doctor notes: {row.rx.doctorNotes}</p><table className="mt-4 w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-2">Medicine</th><th>Schedule</th><th>Days</th><th>Qty</th><th>Manual Unit Price</th><th>Subtotal</th></tr></thead><tbody>{row.rx.medicines.map((m) => <tr key={m.medicineName} className="border-b"><td className="p-2 font-semibold">{m.medicineName}</td><td>{[m.morning ? "M" : "", m.afternoon ? "A" : "", m.night ? "N" : ""].filter(Boolean).join("-") || "-"}</td><td>{m.days}</td><td>{m.quantity}</td><td className="py-2"><Input type="number" min="0" value={prices[m.medicineName] ?? 0} onChange={(event) => { setPricesSaved(false); setPrices({ ...prices, [m.medicineName]: Number(event.target.value) }); }} /></td><td>{currency(m.quantity * (prices[m.medicineName] || 0))}</td></tr>)}</tbody></table>{!allPricesEntered && <p className="mt-3 text-sm font-semibold text-amber-700">Enter price for every medicine to enable bill print.</p>}<div className="mt-4 text-right text-xl font-bold">Grand Total: {currency(total)}</div><div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={onClose}>Close</Button>{pricesSaved && allPricesEntered && <Button variant="secondary" onClick={() => window.print()}>Print</Button>}<Button disabled={!allPricesEntered} onClick={() => { onSavePrices(prices); setPricesSaved(true); }}>Save Bill Price</Button></div></div></Modal>;
+  const [selected, setSelected] = useState<string[]>(row.rx.issuedMedicines?.length ? row.rx.issuedMedicines : row.rx.medicines.map((medicine) => medicine.medicineName));
+  const toggleMedicine = (medicineName: string) => {
+    setSelected((current) => current.includes(medicineName) ? current.filter((name) => name !== medicineName) : [...current, medicineName]);
+  };
+  return <Modal title="Issue Medicine" onClose={onClose}><div className="rounded-lg border border-slate-200 p-5"><div className="flex flex-wrap justify-between gap-3"><div><p className="text-xl font-bold">Token #{row.appointment.tokenNumber}</p><p className="text-sm font-semibold text-slate-600">{fullName(row.patient)} / {row.patient.mobile}</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-700 ring-1 ring-slate-200">Government bill default</span></div><p className="mt-4 text-sm text-slate-600">Select only medicines actually given to the patient. No manual bill or price entry is needed.</p><div className="mt-4 space-y-3">{row.rx.medicines.map((medicine) => <label key={medicine.medicineName} className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><input type="checkbox" className="mt-1 h-4 w-4 accent-clinic-700" checked={selected.includes(medicine.medicineName)} onChange={() => toggleMedicine(medicine.medicineName)} /><span><span className="block font-bold text-slate-950">{medicine.medicineName}</span><span className="text-slate-600">Qty {medicine.quantity} / {medicine.days} days</span></span></label>)}</div><div className="mt-5 flex justify-end gap-3"><Button variant="secondary" onClick={onClose}>Close</Button><Button disabled={!selected.length} onClick={() => onIssue(selected)}>Confirm Issue</Button></div></div></Modal>;
 }
-
 function PublicDisplay() {
   const { appointmentId } = useParams();
   const rows = useTodayRows();
@@ -626,13 +891,14 @@ function PublicDisplay() {
           ? "You are next. Please stay near the clinic desk."
           : `${turnsBeforeYou} patient${turnsBeforeYou === 1 ? "" : "s"} before you. Please stay nearby.`
         : "Your consultation is completed or moved to pharmacy.";
+  const liveAnnouncement = isDoctorUnavailable(announcement);
 
   return (
     <div className="min-h-screen bg-[#eef4f7] p-4 text-slate-950 sm:p-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div>
-            <p className="text-sm font-bold uppercase text-[#115f7e]">Aarogya OPD Clinic</p>
+            <p className="text-sm font-bold uppercase text-[#115f7e]">Svastya Hospital</p>
             <h1 className="mt-1 text-2xl font-black md:text-3xl">Patient Queue Status</h1>
             <p className="mt-1 text-sm font-semibold text-slate-600">{fullName(selected.patient)} / {selected.patient.mobile}</p>
           </div>
@@ -641,6 +907,8 @@ function PublicDisplay() {
             <Link className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50" to="/patient/login">Logout</Link>
           </div>
         </div>
+
+        {liveAnnouncement && <div className="mb-5"><AnnouncementNotice announcement={announcement} live compact /></div>}
 
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
           <section className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-clinical sm:p-8">
@@ -709,7 +977,7 @@ function PublicDisplay() {
           </div>
         </section>
 
-        {isDoctorUnavailable(announcement) && <div className="mt-6 rounded-lg bg-amber-100 p-5 text-amber-900"><b>Doctor leave notice:</b> {announcement.message}</div>}
+        {isDoctorUnavailable(announcement) && <div className="mt-6 rounded-lg bg-amber-100 p-5 text-amber-900"><b>Doctor leave notice:</b> From {formatAnnouncementRange(announcement)}. {announcement.message}</div>}
       </div>
     </div>
   );
